@@ -57,3 +57,9 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }
+
+dependencies {
+    implementation("work.socialhub.kbsky:core:0.3.0")
+    implementation("work.socialhub.kbsky:auth:0.3.0")
+    implementation("work.socialhub.kbsky:stream:0.3.0")
+}
