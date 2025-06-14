@@ -1,3 +1,7 @@
+package com.example.skyposter.ui
+
+import DisplayNotification
+import NotificationViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -21,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 
 @Composable
 fun NotificationListScreen(viewModel: NotificationViewModel) {

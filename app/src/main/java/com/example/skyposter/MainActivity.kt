@@ -1,6 +1,6 @@
 package com.example.skyposter
 
-import LoadingScreen
+import com.example.skyposter.ui.LoadingScreen
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.skyposter.ui.LoginScreen
+import com.example.skyposter.ui.MainScreen
 import com.example.skyposter.ui.theme.SkyPosterTheme
 import java.util.concurrent.TimeUnit
 

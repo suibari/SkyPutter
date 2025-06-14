@@ -1,6 +1,5 @@
-package com.example.skyposter
+package com.example.skyposter.ui
 
-import NotificationListScreen
 import NotificationRepository
 import NotificationViewModel
 import androidx.compose.foundation.layout.Column
@@ -10,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.example.skyposter.SkyPosterApp
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
