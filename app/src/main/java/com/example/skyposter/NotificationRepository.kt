@@ -9,6 +9,7 @@ class NotificationRepository(private val sessionManager: SessionManager) {
     private var lastSeenNotifId: String? = null
 
     suspend fun fetchNewNotifications(): List<NotificationListNotificationsNotification> {
+        println("[INFO] fetching new notifications...")
         val auth = sessionManager.getAuth() ?: return emptyList()
         val response = BlueskyFactory
             .instance(Service.BSKY_SOCIAL.uri)
@@ -19,16 +20,6 @@ class NotificationRepository(private val sessionManager: SessionManager) {
 
         val notifs = response.data.notifications
 
-        val newNotifs = if (lastSeenNotifId != null) {
-            notifs.takeWhile { it.cid != lastSeenNotifId }
-        } else {
-            notifs
-        }
-
-        if (newNotifs.isNotEmpty()) {
-            lastSeenNotifId = newNotifs.first().cid
-        }
-
-        return newNotifs
+        return notifs
     }
 }

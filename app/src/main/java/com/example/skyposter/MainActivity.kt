@@ -15,7 +15,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             SkyPosterTheme {
                 val context = LocalContext.current
-                val sessionManager = remember { SessionManager(context) }
+                val app = context.applicationContext as SkyPosterApp
+                val sessionManager = app.sessionManager
 
                 var isLoggedIn by remember { mutableStateOf<Boolean?>(null) }
 
@@ -25,8 +26,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 when (isLoggedIn) {
-                    true -> MainScreen()
-                    false -> LoginScreen ( onLoginSuccess = {isLoggedIn = true} )
+                    true -> MainScreen(app)
+                    false -> LoginScreen (app, onLoginSuccess = {isLoggedIn = true} )
                     null -> LoadingScreen()
                 }
             }

@@ -30,8 +30,8 @@ class NotificationViewModel(
         // 通知の送信はここで NotificationManager を使って実装
     }
 
-    fun fetchNow() {
-        // 強制フェッチ
+    suspend fun fetchNow() {
+        repo.fetchNewNotifications()
     }
 
     fun markAllAsRead() {

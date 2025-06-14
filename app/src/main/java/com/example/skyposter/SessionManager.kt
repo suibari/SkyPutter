@@ -5,8 +5,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
+import work.socialhub.kbsky.ATProtocolException
+import work.socialhub.kbsky.BlueskyFactory
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetTimelineRequest
+import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
 private val Context.dataStore by preferencesDataStore(name = "session")
 
@@ -39,9 +44,39 @@ class SessionManager(private val context: Context) {
         val access = prefs[SessionKeys.accessJwt]
         val refresh = prefs[SessionKeys.refreshJwt]
         val did = prefs[SessionKeys.did]
-        return if (access != null && refresh != null && did != null) {
-            BearerTokenAuthProvider(access, refresh)
-        } else null
+
+        println("access: $access, refresh: $refresh")
+        if (access != null && refresh != null && did != null) {
+            val auth: AuthProvider = BearerTokenAuthProvider(access, refresh)
+
+            try {
+                // getTimelineにtryし、expiredならrefreshする
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .feed()
+                    .getTimeline(FeedGetTimelineRequest(auth))
+                return auth
+            } catch (e: ATProtocolException) {
+                println(e)
+                if (e.message?.contains("ExpiredToken") == true) {
+                    val response = BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .server()
+                        .refreshSession(AuthRequest(auth))
+                    saveSession(
+                        response.data.accessJwt,
+                        response.data.refreshJwt,
+                        did
+                    )
+                    return auth
+                } else {
+                    // expired以外でのエラーはとりあえずセッションクリアしておく
+                    clearSession()
+                }
+            }
+        }
+
+        return null
     }
 
     suspend fun clearSession() {

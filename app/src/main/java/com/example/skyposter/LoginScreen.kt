@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
@@ -14,14 +13,14 @@ import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionReq
 
 @Composable
 fun LoginScreen(
+    application: SkyPosterApp,
     onLoginSuccess: () -> Unit
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val sessionManager = remember { SessionManager(context) }
+    val sessionManager = application.sessionManager
 
     Column(
         modifier = Modifier

@@ -9,21 +9,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.domain.Service
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    application: SkyPosterApp,
+) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("ポスト", "通知")
-    val context = LocalContext.current
-    val sessionManager = remember { SessionManager(context) }
+    val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
-    val notifyRepo = NotificationRepository(sessionManager)
 
     Scaffold(
         bottomBar = {
@@ -71,7 +70,7 @@ fun MainScreen() {
 
                 1 -> {
                     // 通知画面
-                    NotificationListScreen(viewModel = remember { NotificationViewModel(notifyRepo) })
+                    NotificationListScreen(viewModel = remember { NotificationViewModel(NotificationRepository(sessionManager)) })
                 }
             }
         }
