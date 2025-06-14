@@ -62,4 +62,5 @@ dependencies {
     implementation("work.socialhub.kbsky:core:0.3.0")
     implementation("work.socialhub.kbsky:auth:0.3.0")
     implementation("work.socialhub.kbsky:stream:0.3.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 }

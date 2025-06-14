@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
@@ -19,6 +20,8 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
 
     Column(
         modifier = Modifier
@@ -52,7 +55,19 @@ fun LoginScreen(
                 errorMessage = null
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        BskyClient.login(identifier, password)
+                        // Blueskyログイン
+                        val response = BlueskyFactory
+                            .instance(Service.BSKY_SOCIAL.uri)
+                            .server()
+                            .createSession(ServerCreateSessionRequest().also {
+                                it.identifier = identifier
+                                it.password = password
+                            })
+                        val accessJwt = response.data.accessJwt
+                        val refreshJwt = response.data.refreshJwt
+
+                        // セッション保存
+                        sessionManager.saveSession(accessJwt, refreshJwt, identifier)
 
                         withContext(Dispatchers.Main) {
                             onLoginSuccess()
