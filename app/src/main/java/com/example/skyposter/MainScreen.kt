@@ -20,7 +20,7 @@ fun MainScreen(
     application: SkyPosterApp,
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("ポスト", "通知")
+    val tabs = listOf("ポスト", "通知", "プロフィール")
     val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -74,6 +74,10 @@ fun MainScreen(
                 1 -> {
                     // 通知画面
                     NotificationListScreen(viewModel = remember { NotificationViewModel(NotificationRepository(sessionManager, context)) })
+                }
+
+                2 -> {
+                    UserPostListScreen(sessionManager)
                 }
             }
         }

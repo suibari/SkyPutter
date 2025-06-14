@@ -13,6 +13,7 @@ import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
+import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 
 private val Context.dataStore by preferencesDataStore(name = "session")
 
@@ -22,6 +23,12 @@ object SessionKeys {
     val did = stringPreferencesKey("did")
 }
 
+data class Session(
+    val accessJwt: String?,
+    val refreshJwt: String?,
+    val did: String?
+)
+
 class SessionManager(private val context: Context) {
 
     suspend fun saveSession(accessJwt: String, refreshJwt: String, did: String) {
@@ -30,6 +37,14 @@ class SessionManager(private val context: Context) {
             prefs[SessionKeys.refreshJwt] = refreshJwt
             prefs[SessionKeys.did] = did
         }
+    }
+
+    suspend fun getSession(): Session {
+        val prefs = context.dataStore.data.first()
+        val access = prefs[SessionKeys.accessJwt]
+        val refresh = prefs[SessionKeys.refreshJwt]
+        val did = prefs[SessionKeys.did]
+        return Session(access, refresh, did)
     }
 
     suspend fun hasSession(): Boolean {
@@ -46,7 +61,6 @@ class SessionManager(private val context: Context) {
         val refresh = prefs[SessionKeys.refreshJwt]
         val did = prefs[SessionKeys.did]
 
-        println("access: $access, refresh: $refresh")
         if (access != null && refresh != null && did != null) {
             val auth: AuthProvider = BearerTokenAuthProvider(access, refresh)
 
