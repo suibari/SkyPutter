@@ -1,6 +1,7 @@
 package com.example.skyposter
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -70,8 +71,8 @@ class SessionManager(private val context: Context) {
                     )
                     return auth
                 } else {
-                    // expired以外でのエラーはとりあえずセッションクリアしておく
-                    clearSession()
+                    Log.e("Session", "セッション再取得失敗: ${e.message}")
+                    throw e
                 }
             }
         }

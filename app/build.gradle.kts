@@ -59,10 +59,12 @@ dependencies {
 }
 
 dependencies {
+    implementation(libs.androidx.work.runtime.ktx)
     implementation("work.socialhub.kbsky:core:0.3.0")
     implementation("work.socialhub.kbsky:auth:0.3.0")
     implementation("work.socialhub.kbsky:stream:0.3.0")
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.33.2-alpha")
     implementation("io.coil-kt.coil3:coil-compose:3.2.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")}
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
+}

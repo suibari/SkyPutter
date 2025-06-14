@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
@@ -22,6 +23,7 @@ fun MainScreen(
     val tabs = listOf("ポスト", "通知")
     val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var postText by remember { mutableStateOf("") }
 
     Scaffold(
@@ -62,6 +64,7 @@ fun MainScreen(
                                         it.text = postText
                                     }
                                 )
+                            postText = ""
                         }
                     }) {
                         Text("ポストする")
@@ -70,7 +73,7 @@ fun MainScreen(
 
                 1 -> {
                     // 通知画面
-                    NotificationListScreen(viewModel = remember { NotificationViewModel(NotificationRepository(sessionManager)) })
+                    NotificationListScreen(viewModel = remember { NotificationViewModel(NotificationRepository(sessionManager, context)) })
                 }
             }
         }

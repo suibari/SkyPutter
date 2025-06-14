@@ -15,6 +15,7 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -44,11 +45,12 @@ fun NotificationListScreen(viewModel: NotificationViewModel) {
 }
 
 @Composable
-fun NotificationItem(notification: NotificationListNotificationsNotification) {
+fun NotificationItem(notification: DisplayNotification) {
+    val notif = notification.raw
     Row(modifier = Modifier.padding(8.dp)) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(notification.author.avatar)
+                .data(notif.author.avatar)
                 .crossfade(true)
                 .build(),
             contentDescription = "avatar",
@@ -57,12 +59,17 @@ fun NotificationItem(notification: NotificationListNotificationsNotification) {
         )
 
         Column(modifier = Modifier.padding(start = 16.dp)) {
+            Row {
+                Text(
+                    text = notif.reason ?: "通知",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (notification.isNew) {
+                    Text("●", color = Color.Red)
+                }
+            }
             Text(
-                text = notification.reason ?: "通知",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Text(
-                text = notification.author.handle ?: "unknown",
+                text = notif.author.handle ?: "unknown",
                 style = MaterialTheme.typography.bodySmall
             )
         }
