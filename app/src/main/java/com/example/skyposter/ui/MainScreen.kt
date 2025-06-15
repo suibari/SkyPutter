@@ -98,7 +98,10 @@ fun MainScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 // 右下ポストボタン
-                Button(onClick = { viewModel.post(postText) }) {
+                Button(onClick = {
+                    viewModel.post(postText)
+                    postText = ""
+                }) {
                     Text("ポスト")
                 }
             }

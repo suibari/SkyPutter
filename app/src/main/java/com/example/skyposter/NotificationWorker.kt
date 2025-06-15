@@ -15,7 +15,7 @@ class NotificationWorker(
         val sessionManager = SessionManager(appContext)
         val repository = NotificationRepository(sessionManager, appContext)
 
-        repository.fetchNewNotifications()
+        repository.fetchNotifications(50)
 
         return Result.success()
     }

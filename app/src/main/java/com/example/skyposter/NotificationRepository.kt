@@ -19,7 +19,9 @@ data class DisplayNotification(
     val isNew: Boolean,
     val parentPost: FeedPost? = null,
     val parentPostRecord: RepoStrongRef? = null,
-    val rootPostRecord: RepoStrongRef? = null
+    val rootPostRecord: RepoStrongRef? = null,
+    val isLiked: Boolean = false,
+    val isReposted: Boolean = false,
 )
 
 class NotificationRepository(
@@ -34,26 +36,28 @@ class NotificationRepository(
         private const val KEY_LAST_SEEN = "last_seen_notif_indexed_at"
     }
 
-    suspend fun fetchNewNotifications(): List<DisplayNotification> {
-        println("[INFO] fetching new notifications...")
-        val auth = sessionManager.getAuth() ?: return emptyList()
+    suspend fun fetchNotifications(limit: Int, cursor: String? = null): Pair<List<DisplayNotification>, String?> {
+        Log.i("NotificationRepository", "fetching notification, cursor: $cursor")
+        val auth = sessionManager.getAuth() ?: return Pair(emptyList(), null)
         val response = BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
             .notification()
             .listNotifications(
-                NotificationListNotificationsRequest(auth)
+                NotificationListNotificationsRequest(auth).also {
+                    it.limit = limit
+                    it.cursor = cursor
+                }
             )
-        val notifs = response.data.notifications
 
-        // 未読判定
+        val notifs = response.data.notifications
+        val newCursor = response.data.cursor
+
         val result = notifs.map { notif ->
             val isNew = lastSeenNotifIndexedAt?.let { notif.indexedAt > it } ?: true
-
             val parentPostRecord = notif.record.asFeedPost?.reply?.parent
                 ?: notif.record.asFeedRepost?.subject
                 ?: notif.record.asFeedLike?.subject
             val rootPostRecord = notif.record.asFeedPost?.reply?.root
-
             val parentPost: FeedPost? = getRecord(parentPostRecord)
 
             DisplayNotification(
@@ -65,14 +69,7 @@ class NotificationRepository(
             )
         }
 
-        // 最新既読をセット
-        if (notifs.isNotEmpty()) {
-            val newest = notifs.first().indexedAt
-            lastSeenNotifIndexedAt = newest
-            prefs.edit { putString(KEY_LAST_SEEN, newest) }
-        }
-
-        return result
+        return Pair(result, newCursor)
     }
 
     fun markAllAsRead() {

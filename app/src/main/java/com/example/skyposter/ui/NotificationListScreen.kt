@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
@@ -26,6 +27,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -73,8 +75,15 @@ fun NotificationListScreen(
         }
     }) {
         LazyColumn {
-            items(notifications) { notif ->
+            itemsIndexed(notifications) { index, notif ->
                 NotificationItem(notif, onReply, onLike, onRepost)
+
+                // 最後のアイテムが表示されたときに追加読み込み
+                if (index == notifications.lastIndex) {
+                    LaunchedEffect(index) {
+                        viewModel.loadMoreNotifications()
+                    }
+                }
             }
         }
     }
@@ -99,6 +108,9 @@ fun NotificationItem(
     val parentPost = notification.parentPost
     val subjectRef = RepoStrongRef(notification.raw.uri, notification.raw.cid)
     val subjectRecord = notification.raw.record.asFeedPost
+
+    val likeColor = if (notification.isLiked) Color.Red else Color.Black
+    val repostColor = if (notification.isReposted) Color.Green else Color.Black
 
     Row(modifier = Modifier.padding(8.dp)) {
         // アバター
@@ -126,13 +138,16 @@ fun NotificationItem(
         }
 
         Column(modifier = Modifier.padding(start = 16.dp)) {
+            // 名前
+            Text(text = notification.raw.author.displayName ?: "", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
             // リプライ内容
             if (post != null) {
                 Text(post, style = MaterialTheme.typography.bodyMedium)
             }
             Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
 
-            // アクションボタン
+            // アクションボタン: リプライだった場合にのみ表示
             if (
                 notification.parentPostRecord != null &&
                 notification.rootPostRecord != null &&
@@ -153,6 +168,7 @@ fun NotificationItem(
                     Icon (
                         Icons.Default.FavoriteBorder,
                         contentDescription = "いいね",
+                        tint = likeColor,
                         modifier = Modifier
                             .padding(end = 8.dp)
                             .clickable {
@@ -162,6 +178,7 @@ fun NotificationItem(
                     Icon (
                         Icons.Default.Refresh,
                         contentDescription = "リポスト",
+                        tint = repostColor,
                         modifier = Modifier
                             .clickable {
                                 onRepost(subjectRef)

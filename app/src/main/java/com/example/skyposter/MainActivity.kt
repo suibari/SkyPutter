@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -29,9 +30,9 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val sessionManager = app.sessionManager
                 val mainViewModel = remember { MainViewModel(sessionManager) }
-                val notificationViewModel = remember {
-                    NotificationViewModel(NotificationRepository(sessionManager, context))
-                }
+                val repo = remember { NotificationRepository(sessionManager, context) }
+                val factory = remember { NotificationViewModelFactory(repo) }
+                val notificationViewModel: NotificationViewModel = viewModel(factory = factory)
 
                 val coroutineScope = rememberCoroutineScope()
                 var isCheckedSession by remember { mutableStateOf(false) }
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
                         // 通知プリロード
 //                        coroutineScope.launch {
-//                            notificationViewModel.fetchNow()
+//                            notificationViewModel.loadInitialNotifications()
 //                        }
 
                         navController.navigate(Screen.Main.route) {
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity() {
                             application = app,
                             onLoginSuccess = {
                                 coroutineScope.launch {
-                                    notificationViewModel.fetchNow()
+                                    notificationViewModel.loadInitialNotifications()
                                 }
                                 navController.navigate(Screen.Main.route) {
                                     popUpTo(Screen.Login.route) { inclusive = true }
@@ -89,6 +90,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onOpenNotification = {
+                                notificationViewModel.loadInitialNotifications() // 本当はここでフェッチすると時間がかかるからやだ…
                                 navController.navigate(Screen.NotificationList.route)
                             },
                             onOpenUserPost = {
