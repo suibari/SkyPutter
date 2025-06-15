@@ -6,15 +6,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.skyposter.BskyUtil
 import com.example.skyposter.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
-import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
-import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
-import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 class NotificationViewModel(
     private val repo: NotificationRepository // Context → Repository に修正

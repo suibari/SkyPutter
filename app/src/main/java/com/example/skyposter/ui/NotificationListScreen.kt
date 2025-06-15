@@ -70,8 +70,8 @@ fun NotificationItem(notification: DisplayNotification) {
         else -> "unknown"
     }
     val post = notif.record.asFeedPost?.text
-    val rootPost = notif.record.asFeedPost?.reply?.parent ?: notif.record.asFeedRepost?.subject ?: notif.record.asFeedLike?.subject
     val date = notif.indexedAt
+    val rootPost = notification.rootPost
 
     Row(modifier = Modifier.padding(8.dp)) {
         // アバター
@@ -107,7 +107,7 @@ fun NotificationItem(notification: DisplayNotification) {
 
             if (rootPost != null) {
                 Text(
-                    text = getRecord(rootPost)?.text ?: "",
+                    text = rootPost.text ?: "",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     modifier = Modifier.padding(top = 8.dp)
@@ -115,20 +115,4 @@ fun NotificationItem(notification: DisplayNotification) {
             }
         }
     }
-}
-
-private fun getRecord(record: RepoStrongRef): FeedPost? {
-    val uriSplit = BskyUtil.parseAtUri(record.uri)
-
-    val response = BlueskyFactory
-        .instance(BSKY_SOCIAL.uri)
-        .repo()
-        .getRecord(
-            RepoGetRecordRequest(
-            repo = uriSplit?.first ?: "",
-            collection = uriSplit?.second ?: "",
-            rkey = uriSplit?.third ?: ""
-        )
-        )
-    return response.data.value.asFeedPost
 }

@@ -29,13 +29,22 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val sessionManager = app.sessionManager
                 val mainViewModel = remember { MainViewModel(sessionManager) }
-                val coroutineScope = rememberCoroutineScope()
+                val notificationViewModel = remember {
+                    NotificationViewModel(NotificationRepository(sessionManager, context))
+                }
 
+                val coroutineScope = rememberCoroutineScope()
                 var isCheckedSession by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     if (sessionManager.hasSession()) {
                         scheduleNotificationWorker(context)
+
+                        // 通知プリロード
+//                        coroutineScope.launch {
+//                            notificationViewModel.fetchNow()
+//                        }
+
                         navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Loading.route) { inclusive = true }
                         }
@@ -58,6 +67,9 @@ class MainActivity : ComponentActivity() {
                         LoginScreen(
                             application = app,
                             onLoginSuccess = {
+                                coroutineScope.launch {
+                                    notificationViewModel.fetchNow()
+                                }
                                 navController.navigate(Screen.Main.route) {
                                     popUpTo(Screen.Login.route) { inclusive = true }
                                 }
@@ -85,10 +97,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.NotificationList.route) {
-                        val notificationViewModel = remember {
-                            NotificationViewModel(NotificationRepository(sessionManager, context))
-                        }
-                        NotificationListScreen(viewModel = notificationViewModel)
+                        NotificationListScreen(viewModel = notificationViewModel) // ✅ 共有ViewModelを渡す
                     }
                 }
             }
