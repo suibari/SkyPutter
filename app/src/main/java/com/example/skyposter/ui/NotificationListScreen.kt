@@ -8,6 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +32,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.example.skyposter.BskyUtil
+import work.socialhub.kbsky.BlueskyFactory
+import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
+import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @Composable
 fun NotificationListScreen(viewModel: NotificationViewModel) {
@@ -50,7 +63,18 @@ fun NotificationListScreen(viewModel: NotificationViewModel) {
 @Composable
 fun NotificationItem(notification: DisplayNotification) {
     val notif = notification.raw
+    val reason = when {
+        notif.record.asFeedPost != null -> "reply"
+        notif.record.asFeedRepost != null -> "repost"
+        notif.record.asFeedLike != null -> "like"
+        else -> "unknown"
+    }
+    val post = notif.record.asFeedPost?.text
+    val rootPost = notif.record.asFeedPost?.reply?.parent ?: notif.record.asFeedRepost?.subject ?: notif.record.asFeedLike?.subject
+    val date = notif.indexedAt
+
     Row(modifier = Modifier.padding(8.dp)) {
+        // アバター
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(notif.author.avatar)
@@ -61,20 +85,50 @@ fun NotificationItem(notification: DisplayNotification) {
                 .size(48.dp)
         )
 
+        // 通知アイコン
+        when (reason) {
+            "reply" -> Icon(Icons.Default.Share, contentDescription = "リプライ")
+            "repost" -> Icon(Icons.Default.Refresh, contentDescription = "リポスト")
+            "like" -> Icon(Icons.Default.FavoriteBorder, contentDescription = "リポスト")
+            "unknown" -> Icon(Icons.Default.Notifications, contentDescription = "不明")
+        }
+
+        // 新規マーク
+        if (notification.isNew) {
+            Text("●", color = Color.Red)
+        }
+
+        // 通知内容、元ポスト
         Column(modifier = Modifier.padding(start = 16.dp)) {
-            Row {
-                Text(
-                    text = notif.reason ?: "通知",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-                if (notification.isNew) {
-                    Text("●", color = Color.Red)
-                }
+            if (post != null) {
+                Text(post, style = MaterialTheme.typography.bodyMedium)
             }
-            Text(
-                text = notif.author.handle ?: "unknown",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+
+            if (rootPost != null) {
+                Text(
+                    text = getRecord(rootPost)?.text ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
+}
+
+private fun getRecord(record: RepoStrongRef): FeedPost? {
+    val uriSplit = BskyUtil.parseAtUri(record.uri)
+
+    val response = BlueskyFactory
+        .instance(BSKY_SOCIAL.uri)
+        .repo()
+        .getRecord(
+            RepoGetRecordRequest(
+            repo = uriSplit?.first ?: "",
+            collection = uriSplit?.second ?: "",
+            rkey = uriSplit?.third ?: ""
+        )
+        )
+    return response.data.value.asFeedPost
 }
