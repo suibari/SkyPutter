@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.skyposter.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 class NotificationViewModel(
     private val repo: NotificationRepository // Context → Repository に修正
@@ -66,5 +67,13 @@ class NotificationViewModel(
     suspend fun fetchNow() {
         repo.markAllAsRead()
         repo.fetchNewNotifications()
+    }
+
+    suspend fun likePost(record: RepoStrongRef) {
+        repo.likePost(record)
+    }
+
+    suspend fun repostPost(record: RepoStrongRef) {
+        repo.repostPost(record)
     }
 }

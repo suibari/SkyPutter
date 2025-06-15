@@ -1,7 +1,9 @@
 package com.example.skyposter.ui
 
 import DisplayNotification
+import MainViewModel
 import NotificationViewModel
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -9,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -32,17 +33,36 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.skyposter.BskyUtil
-import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
-import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @Composable
-fun NotificationListScreen(viewModel: NotificationViewModel) {
+fun NotificationListScreen(
+    viewModel: NotificationViewModel,
+    mainViewModel: MainViewModel,
+    onNavigateToMain: () -> Unit
+) {
     val notifications = viewModel.notifications
     val refreshing = remember { mutableStateOf(false) }
+
+    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
+        mainViewModel.setReplyContext(
+            parentRef = parentRef,
+            rootRef = rootRef,
+            parentPost = parentPost
+        )
+        onNavigateToMain()
+    }
+    val onLike: (RepoStrongRef) -> Unit = { record ->
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.likePost(record)
+        }
+    }
+    val onRepost: (RepoStrongRef) -> Unit = { record ->
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.repostPost(record)
+        }
+    }
 
     SwipeRefresh(state = rememberSwipeRefreshState(refreshing.value), onRefresh = {
         refreshing.value = true
@@ -54,14 +74,19 @@ fun NotificationListScreen(viewModel: NotificationViewModel) {
     }) {
         LazyColumn {
             items(notifications) { notif ->
-                NotificationItem(notif)
+                NotificationItem(notif, onReply, onLike, onRepost)
             }
         }
     }
 }
 
 @Composable
-fun NotificationItem(notification: DisplayNotification) {
+fun NotificationItem(
+    notification: DisplayNotification,
+    onReply: (parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit,
+    onLike: (parentRecord: RepoStrongRef) -> Unit,
+    onRepost: (parentRecord: RepoStrongRef) -> Unit,
+) {
     val notif = notification.raw
     val reason = when {
         notif.record.asFeedPost != null -> "reply"
@@ -71,7 +96,9 @@ fun NotificationItem(notification: DisplayNotification) {
     }
     val post = notif.record.asFeedPost?.text
     val date = notif.indexedAt
-    val rootPost = notification.rootPost
+    val parentPost = notification.parentPost
+    val subjectRef = RepoStrongRef(notification.raw.uri, notification.raw.cid)
+    val subjectRecord = notification.raw.record.asFeedPost
 
     Row(modifier = Modifier.padding(8.dp)) {
         // アバター
@@ -98,20 +125,59 @@ fun NotificationItem(notification: DisplayNotification) {
             Text("●", color = Color.Red)
         }
 
-        // 通知内容、元ポスト
         Column(modifier = Modifier.padding(start = 16.dp)) {
+            // リプライ内容
             if (post != null) {
                 Text(post, style = MaterialTheme.typography.bodyMedium)
             }
             Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
 
-            if (rootPost != null) {
-                Text(
-                    text = rootPost.text ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+            // アクションボタン
+            if (
+                notification.parentPostRecord != null &&
+                notification.rootPostRecord != null &&
+                notification.parentPost != null &&
+                subjectRecord != null
+                ) {
+
+                Row(modifier = Modifier.padding(top = 8.dp)) {
+                    Icon (
+                        Icons.Default.Share,
+                        contentDescription = "リプライ",
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clickable {
+                                onReply(subjectRef, notification.rootPostRecord, subjectRecord)
+                            }
+                    )
+                    Icon (
+                        Icons.Default.FavoriteBorder,
+                        contentDescription = "いいね",
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clickable {
+                                onLike(subjectRef)
+                            }
+                    )
+                    Icon (
+                        Icons.Default.Refresh,
+                        contentDescription = "リポスト",
+                        modifier = Modifier
+                            .clickable {
+                                onRepost(subjectRef)
+                            }
+                    )
+                }
+
+                // 通知元ポスト
+                if (parentPost != null) {
+                    Text(
+                        text = parentPost.text ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         }
     }

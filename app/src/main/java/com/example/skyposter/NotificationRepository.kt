@@ -1,11 +1,14 @@
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.example.skyposter.SessionManager
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNotificationsRequest
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import androidx.core.content.edit
 import com.example.skyposter.BskyUtil
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -14,17 +17,17 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 data class DisplayNotification(
     val raw: NotificationListNotificationsNotification,
     val isNew: Boolean,
-    val rootPost: FeedPost? = null
+    val parentPost: FeedPost? = null,
+    val parentPostRecord: RepoStrongRef? = null,
+    val rootPostRecord: RepoStrongRef? = null
 )
 
 class NotificationRepository(
     private val sessionManager: SessionManager,
     val context: Context
 ) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
-    private var lastSeenNotifIndexedAt: String? =
-        prefs.getString(KEY_LAST_SEEN, null)
+    private val prefs: SharedPreferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
+    private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null)
     private val recordCache = mutableMapOf<String, FeedPost>()
 
     companion object {
@@ -46,34 +49,19 @@ class NotificationRepository(
         val result = notifs.map { notif ->
             val isNew = lastSeenNotifIndexedAt?.let { notif.indexedAt > it } ?: true
 
-            val rootPostRecord = notif.record.asFeedPost?.reply?.parent
+            val parentPostRecord = notif.record.asFeedPost?.reply?.parent
                 ?: notif.record.asFeedRepost?.subject
                 ?: notif.record.asFeedLike?.subject
+            val rootPostRecord = notif.record.asFeedPost?.reply?.root
 
-            val rootPost: FeedPost? = try {
-                rootPostRecord?.let { ref ->
-                    val uri = ref.uri
-                    recordCache[uri] ?: run {
-                        val (repo, collection, rkey) = BskyUtil.parseAtUri(uri)
-                            ?: return@let null
-                        val record = BlueskyFactory
-                            .instance(BSKY_SOCIAL.uri)
-                            .repo()
-                            .getRecord(
-                                RepoGetRecordRequest(repo, collection, rkey)
-                            )
-                        val feedPost = record.data.value.asFeedPost
-                        feedPost?.also { recordCache[uri] = it }
-                    }
-                }
-            } catch (e: Exception) {
-                throw e
-            }
+            val parentPost: FeedPost? = getRecord(parentPostRecord)
 
             DisplayNotification(
                 raw = notif,
                 isNew = isNew,
-                rootPost = rootPost
+                parentPost = parentPost,
+                parentPostRecord = parentPostRecord,
+                rootPostRecord = rootPostRecord
             )
         }
 
@@ -94,19 +82,42 @@ class NotificationRepository(
         }
     }
 
-    private fun getRecord(record: RepoStrongRef): FeedPost? {
-        val uriSplit = BskyUtil.parseAtUri(record.uri)
+    private fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
+        return try {
+            refRecord?.let { ref ->
+                val uri = ref.uri
+                recordCache[uri] ?: run {
+                    val (repo, collection, rkey) = BskyUtil.parseAtUri(uri)
+                        ?: return@let null
+                    val record = BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .repo()
+                        .getRecord(
+                            RepoGetRecordRequest(repo, collection, rkey)
+                        )
+                    val feedPost = record.data.value.asFeedPost
+                    feedPost?.also { recordCache[uri] = it }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("getRecord", "Record not found", e)
+            return null
+        }
+    }
 
-        val response = BlueskyFactory
+    suspend fun likePost(record: RepoStrongRef) {
+        val auth = sessionManager.getAuth() ?: return
+        BlueskyFactory
             .instance(BSKY_SOCIAL.uri)
-            .repo()
-            .getRecord(
-                RepoGetRecordRequest(
-                    repo = uriSplit?.first ?: "",
-                    collection = uriSplit?.second ?: "",
-                    rkey = uriSplit?.third ?: ""
-                )
-            )
-        return response.data.value.asFeedPost
+            .feed()
+            .like(FeedLikeRequest(auth).also { it.subject = record })
+    }
+
+    suspend fun repostPost(record: RepoStrongRef) {
+        val auth = sessionManager.getAuth() ?: return
+        BlueskyFactory
+            .instance(BSKY_SOCIAL.uri)
+            .feed()
+            .repost(FeedRepostRequest(auth).also { it.subject = record })
     }
 }

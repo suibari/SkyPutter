@@ -97,7 +97,13 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.NotificationList.route) {
-                        NotificationListScreen(viewModel = notificationViewModel) // ✅ 共有ViewModelを渡す
+                        NotificationListScreen(
+                            viewModel = notificationViewModel,
+                            mainViewModel = mainViewModel,
+                            onNavigateToMain = {
+                                navController.navigate("main")
+                            }
+                        )
                     }
                 }
             }

@@ -1,3 +1,4 @@
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -10,12 +11,18 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 class MainViewModel(
     sessionManager: SessionManager
 ) : ViewModel() {
     private var _auth: AuthProvider? = null
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
+    var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
+    var parentPost by mutableStateOf<FeedPost?>(null)
+    private var rootPostRecord by mutableStateOf<RepoStrongRef?>(null)
 
     init {
         viewModelScope.launch {
@@ -36,12 +43,40 @@ class MainViewModel(
 
     fun post(postText: String) {
         viewModelScope.launch {
-            val response = BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .post(FeedPostRequest(_auth!!).also {
-                    it.text = postText
-                })
+            if (parentPostRecord != null) {
+                // リプライ投稿
+                val reply = FeedPostReplyRef().also {
+                    it.root = rootPostRecord
+                    it.parent = parentPostRecord
+                }
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .feed()
+                    .post(FeedPostRequest(_auth!!).also {
+                        it.text = postText
+                        it.reply = reply
+                    })
+            } else {
+                // 通常投稿
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .feed()
+                    .post(FeedPostRequest(_auth!!).also {
+                        it.text = postText
+                    })
+            }
         }
+    }
+
+    fun setReplyContext(parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) {
+        this.parentPostRecord = parentRef
+        this.rootPostRecord = rootRef
+        this.parentPost = parentPost
+    }
+
+    fun clearReplyContext() {
+        this.parentPostRecord = null
+        this.rootPostRecord = null
+        this.parentPost = null
     }
 }

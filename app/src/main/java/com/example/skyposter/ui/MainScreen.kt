@@ -1,13 +1,12 @@
 package com.example.skyposter.ui
 
 import MainViewModel
-import NotificationRepository
-import NotificationViewModel
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
@@ -16,16 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.skyposter.SkyPosterApp
 import kotlinx.coroutines.launch
-import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
-import work.socialhub.kbsky.domain.Service
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,15 +104,51 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        // 中央テキストフィールド
-        TextField(
-            value = postText,
-            onValueChange = { postText = it },
-            label = { Text("今なにしてる？") },
+        Column (
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)
                 .fillMaxWidth()
-        )
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(bottom = if (viewModel.parentPostRecord != null) 120.dp else 80.dp)
+                    .fillMaxWidth()
+            ) {
+                TextField(
+                    value = postText,
+                    onValueChange = { postText = it },
+                    label = { Text("今なにしてる？") },
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                )
+            }
+
+            if (viewModel.parentPostRecord != null) {
+                Card(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row {
+                            Text(
+                                text = "返信先",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { viewModel.clearReplyContext() }) {
+                                Icon(Icons.Default.Close, contentDescription = "閉じる")
+                            }
+                        }
+                        Text(
+                            text = viewModel.parentPost?.text ?: "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.Gray
+                        )
+                    }
+                }
+            }
+        }
     }
 }
