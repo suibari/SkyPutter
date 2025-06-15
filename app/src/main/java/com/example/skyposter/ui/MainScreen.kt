@@ -1,10 +1,15 @@
 package com.example.skyposter.ui
 
+import MainViewModel
 import NotificationRepository
 import NotificationViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,72 +19,102 @@ import kotlinx.coroutines.launch
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.domain.Service
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     application: SkyPosterApp,
+    viewModel: MainViewModel,
+    onLogout: () -> Unit,
+    onOpenNotification: () -> Unit,
+    onOpenUserPost: () -> Unit,
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("ポスト", "通知", "プロフィール")
     val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
     var postText by remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    // 左上ユーザーアイコン（ログアウトメニュー）
+                    var expanded by remember { mutableStateOf(false) }
+                    IconButton(onClick = { expanded = true }) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(viewModel.getProfile()?.avatar)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "avatar",
+                            modifier = Modifier
+                                .size(48.dp)
+                        )
+                        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text("プロフィール") },
+                                onClick = {
+                                    coroutineScope.launch {
+                                        onOpenUserPost()
+                                        expanded = false
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("ログアウト") },
+                                onClick = {
+                                    coroutineScope.launch {
+                                        sessionManager.clearSession()
+                                        onLogout()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // 右上通知アイコン
+                    IconButton(onClick = onOpenNotification) {
+                        Icon(Icons.Default.Notifications, contentDescription = "通知")
+                    }
+                }
+            )
+        },
         bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, label ->
-                    NavigationBarItem(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        label = { Text(label) },
-                        icon = {} // アイコンを追加したい場合はここに
-                    )
+            BottomAppBar {
+                // 左下画像添付（未実装）
+                IconButton(onClick = {
+                    // TODO: ギャラリー開く処理
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "画像添付")
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 右下ポストボタン
+                Button(onClick = { viewModel.post(postText) }) {
+                    Text("ポスト")
                 }
             }
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                0 -> {
-                    // ポスト画面
-                    TextField(
-                        value = postText,
-                        onValueChange = { postText = it },
-                        label = { Text("今何してる？") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    )
-
-                    Button(onClick = {
-                        coroutineScope.launch {
-                            val auth = sessionManager.getAuth() ?: return@launch
-                            BlueskyFactory
-                                .instance(Service.BSKY_SOCIAL.uri)
-                                .feed()
-                                .post(
-                                    FeedPostRequest(auth).also {
-                                        it.text = postText
-                                    }
-                                )
-                            postText = ""
-                        }
-                    }) {
-                        Text("ポストする")
-                    }
-                }
-
-                1 -> {
-                    // 通知画面
-                    NotificationListScreen(viewModel = remember { NotificationViewModel(NotificationRepository(sessionManager, context)) })
-                }
-
-                2 -> {
-                    UserPostListScreen(sessionManager)
-                }
-            }
-        }
+        // 中央テキストフィールド
+        TextField(
+            value = postText,
+            onValueChange = { postText = it },
+            label = { Text("今なにしてる？") },
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxWidth()
+        )
     }
 }

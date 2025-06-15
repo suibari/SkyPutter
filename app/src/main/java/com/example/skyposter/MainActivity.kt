@@ -1,45 +1,95 @@
 package com.example.skyposter
 
-import com.example.skyposter.ui.LoadingScreen
+import MainViewModel
+import NotificationRepository
+import NotificationViewModel
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.example.skyposter.ui.LoginScreen
-import com.example.skyposter.ui.MainScreen
+import com.example.skyposter.ui.*
 import com.example.skyposter.ui.theme.SkyPosterTheme
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val app = application as SkyPosterApp
 
         setContent {
             SkyPosterTheme {
                 val context = LocalContext.current
-                val app = context.applicationContext as SkyPosterApp
+                val navController = rememberNavController()
                 val sessionManager = app.sessionManager
+                val mainViewModel = remember { MainViewModel(sessionManager) }
+                val coroutineScope = rememberCoroutineScope()
 
-                var isLoggedIn by remember { mutableStateOf<Boolean?>(null) }
+                var isCheckedSession by remember { mutableStateOf(false) }
 
-                // 起動時セッション確認
                 LaunchedEffect(Unit) {
-                    isLoggedIn = sessionManager.hasSession()
+                    if (sessionManager.hasSession()) {
+                        scheduleNotificationWorker(context)
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(Screen.Loading.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Loading.route) { inclusive = true }
+                        }
+                    }
+                    isCheckedSession = true
                 }
 
-                if (isLoggedIn == true) {
-                    scheduleNotificationWorker(context)
-                }
-
-                when (isLoggedIn) {
-                    true -> MainScreen(app)
-                    false -> LoginScreen (app, onLoginSuccess = {isLoggedIn = true} )
-                    null -> LoadingScreen()
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Loading.route
+                ) {
+                    composable(Screen.Loading.route) {
+                        LoadingScreen()
+                    }
+                    composable(Screen.Login.route) {
+                        LoginScreen(
+                            application = app,
+                            onLoginSuccess = {
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+                    composable(Screen.Main.route) {
+                        MainScreen(
+                            application = app,
+                            viewModel = mainViewModel,
+                            onLogout = {
+                                coroutineScope.launch {
+                                    sessionManager.clearSession()
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(Screen.Main.route) { inclusive = true }
+                                    }
+                                }
+                            },
+                            onOpenNotification = {
+                                navController.navigate(Screen.NotificationList.route)
+                            },
+                            onOpenUserPost = {
+                                navController.navigate(Screen.UserPost.route)
+                            }
+                        )
+                    }
+                    composable(Screen.NotificationList.route) {
+                        val notificationViewModel = remember {
+                            NotificationViewModel(NotificationRepository(sessionManager, context))
+                        }
+                        NotificationListScreen(viewModel = notificationViewModel)
+                    }
                 }
             }
         }
@@ -48,12 +98,12 @@ class MainActivity : ComponentActivity() {
 
 fun scheduleNotificationWorker(context: Context) {
     val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(
-        15, TimeUnit.MINUTES // Android制限：最小15分間隔
+        15, TimeUnit.MINUTES
     ).build()
 
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(
         "notification_worker",
-        ExistingPeriodicWorkPolicy.KEEP, // すでに登録されていれば上書きしない
+        ExistingPeriodicWorkPolicy.KEEP,
         workRequest
     )
 }

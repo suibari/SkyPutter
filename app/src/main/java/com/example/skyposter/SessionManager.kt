@@ -12,6 +12,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetTimelineRequest
 import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
+import work.socialhub.kbsky.auth.api.entity.oauth.OAuthRefreshTokenRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 
@@ -28,6 +29,7 @@ data class Session(
     val refreshJwt: String?,
     val did: String?
 )
+
 
 class SessionManager(private val context: Context) {
 
@@ -62,7 +64,7 @@ class SessionManager(private val context: Context) {
         val did = prefs[SessionKeys.did]
 
         if (access != null && refresh != null && did != null) {
-            val auth: AuthProvider = BearerTokenAuthProvider(access, refresh)
+            var auth: AuthProvider = BearerTokenAuthProvider(access, refresh)
 
             try {
                 // getTimelineにtryし、expiredならrefreshする
@@ -72,18 +74,19 @@ class SessionManager(private val context: Context) {
                     .getTimeline(FeedGetTimelineRequest(auth))
                 return auth
             } catch (e: ATProtocolException) {
-                println(e)
-                if (e.message?.contains("ExpiredToken") == true) {
+                if (e.message?.contains("expired") == true) {
+                    // refreshをaccessJwtに設定してフェッチしないと通らない!
+                    val authRefresh: AuthProvider = BearerTokenAuthProvider(refresh)
                     val response = BlueskyFactory
                         .instance(BSKY_SOCIAL.uri)
                         .server()
-                        .refreshSession(AuthRequest(auth))
-                    saveSession(
-                        response.data.accessJwt,
-                        response.data.refreshJwt,
-                        did
-                    )
-                    return auth
+                        .refreshSession(AuthRequest(authRefresh))
+                    val accessNew = response.data.accessJwt
+                    val refreshNew = response.data.refreshJwt
+                    val authNew: AuthProvider = BearerTokenAuthProvider(accessNew, refreshNew)
+                    saveSession(accessNew, refreshNew, did)
+                    Log.i("Session", "session refreshed!")
+                    return authNew
                 } else {
                     Log.e("Session", "セッション再取得失敗: ${e.message}")
                     throw e
