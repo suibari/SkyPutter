@@ -15,6 +15,7 @@ class NotificationViewModel constructor(
 ) : PaginatedListViewModel<DisplayNotification>() {
 
     private var isPolling = false
+    private val notifiedCids = mutableSetOf<String>() // ← 通知済みcidを記録
 
     override suspend fun fetchItems(
         limit: Int,
@@ -31,10 +32,18 @@ class NotificationViewModel constructor(
             while (isPolling) {
                 try {
                     val (notifs, newCursor) = repo.fetchNotifications(15)
-                    val newNotifs = notifs.filter { it.isNew }
+                    val newNotifs = notifs.filter { it.isNew && it.raw.cid !in notifiedCids }
                     if (newNotifs.isNotEmpty()) {
                         _items.addAll(0, newNotifs)
                         sendDeviceNotification(newNotifs)
+
+                        // 通知済みCIDを記録
+                        notifiedCids.addAll(newNotifs.map { it.raw.cid })
+                        if (notifiedCids.size > 1000) {
+                            // メモリ消費防止のため古いIDを削除
+                            val toRemove = notifiedCids.take(notifiedCids.size - 1000)
+                            notifiedCids.removeAll(toRemove)
+                        }
                     }
                     delay(60_000)
                 } catch (e: Exception) {
