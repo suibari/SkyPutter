@@ -49,9 +49,9 @@ fun MainScreen(
 
     // メイン画面バックグラウンド処理
     LaunchedEffect(Unit) {
+        userPostViewModel.loadInitialItemsIfNeeded()
         notificationViewModel.loadInitialItemsIfNeeded()
         notificationViewModel.startPolling()
-        userPostViewModel.loadInitialItemsIfNeeded()
         likesBackViewModel.loadInitialItemsIfNeeded()
     }
 
