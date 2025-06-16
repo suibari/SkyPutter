@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val sessionManager = app.sessionManager
                 val mainViewModel = remember { MainViewModel(sessionManager) }
+                var myDid: String? = null
 
                 // notification factory
                 val notificationRepo = NotificationRepository(sessionManager, context)
@@ -52,12 +53,17 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(Unit) {
                     if (sessionManager.hasSession()) {
+                        // バックグラウンド処理起動
                         scheduleNotificationWorker(context)
 
+                        myDid = sessionManager.getSession().did
+
+                        // メイン画面表示
                         navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Loading.route) { inclusive = true }
                         }
                     } else {
+                        // ログイン画面表示
                         navController.navigate(Screen.Login.route) {
                             popUpTo(Screen.Loading.route) { inclusive = true }
                         }
@@ -123,11 +129,17 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.UserPost.route) {
                         UserPostListScreen(
                             viewModel = userPostViewModel,
+                            myDid = myDid!!,
                         )
                     }
                     composable(Screen.LikesBack.route) {
                         LikesBackScreen(
                             viewModel = likesBackViewModel,
+                            mainViewModel = mainViewModel,
+                            myDid = myDid!!,
+                            onNavigateToMain = {
+                                navController.navigate("main")
+                            }
                         )
                     }
                 }

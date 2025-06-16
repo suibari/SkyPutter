@@ -1,5 +1,6 @@
 package com.example.skyposter.ui
 
+import MainViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -18,18 +19,48 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.skyposter.LikesBackViewModel
 import com.example.skyposter.UserPostViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @Composable
 fun LikesBackScreen(
-    viewModel: LikesBackViewModel
+    viewModel: LikesBackViewModel,
+    mainViewModel: MainViewModel,
+    myDid: String,
+    onNavigateToMain: () -> Unit,
 ) {
-    val posts = viewModel.items
+    val feeds = viewModel.items
+
+    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
+        mainViewModel.setReplyContext(
+            parentRef = parentRef,
+            rootRef = rootRef,
+            parentPost = parentPost
+        )
+        onNavigateToMain()
+    }
+    val onLike: (RepoStrongRef) -> Unit = { record ->
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.likePost(record)
+        }
+    }
+    val onRepost: (RepoStrongRef) -> Unit = { record ->
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.repostPost(record)
+        }
+    }
 
     PostListScreen(
-        posts = posts,
-        onLoadMore = { viewModel.loadMoreItems() }
+        feeds = feeds,
+        myDid = myDid,
+        onLoadMore = { viewModel.loadMoreItems() },
+        onReply,
+        onLike,
+        onRepost,
     )
 }

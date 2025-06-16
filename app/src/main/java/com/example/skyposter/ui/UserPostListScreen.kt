@@ -1,5 +1,6 @@
 package com.example.skyposter.ui
 
+import MainViewModel
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -17,18 +18,24 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.skyposter.UserPostViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewBasic
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @Composable
 fun UserPostListScreen(
-    viewModel: UserPostViewModel
+    viewModel: UserPostViewModel,
+    myDid: String,
 ) {
-    val posts = viewModel.items
+    val feeds = viewModel.items
 
     PostListScreen(
-        posts = posts,
-        onLoadMore = { viewModel.loadMoreItems() }
+        feeds = feeds,
+        myDid = myDid,
+        onLoadMore = { viewModel.loadMoreItems() },
     )
 }

@@ -30,7 +30,6 @@ data class Session(
     val did: String?
 )
 
-
 class SessionManager(private val context: Context) {
 
     suspend fun saveSession(accessJwt: String, refreshJwt: String, did: String) {

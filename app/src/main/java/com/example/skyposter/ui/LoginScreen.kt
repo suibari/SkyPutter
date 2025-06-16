@@ -65,9 +65,10 @@ fun LoginScreen(
                             })
                         val accessJwt = response.data.accessJwt
                         val refreshJwt = response.data.refreshJwt
+                        val did = response.data.did
 
                         // セッション保存
-                        sessionManager.saveSession(accessJwt, refreshJwt, identifier)
+                        sessionManager.saveSession(accessJwt, refreshJwt, did)
 
                         withContext(Dispatchers.Main) {
                             onLoginSuccess()
