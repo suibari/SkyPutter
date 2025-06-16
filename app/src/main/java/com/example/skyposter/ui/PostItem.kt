@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -34,64 +35,39 @@ fun PostItem(
     val record = feed.post.record?.asFeedPost!!
     val isMyPost = feed.post.author?.did == myDid
 
-    if (isMyPost) {
-        // 自分のポストにはアクションボタンを非表示
-        Row(modifier = Modifier.padding(8.dp)) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(feed.post.author?.avatar)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "avatar",
-                modifier = Modifier
-                    .size(48.dp)
-            )
+    Row(modifier = Modifier.padding(8.dp)) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(feed.post.author?.avatar)
+                .crossfade(true)
+                .build(),
+            contentDescription = "avatar",
+            modifier = Modifier
+                .size(48.dp)
+        )
 
-            Column(modifier = Modifier.padding(start = 16.dp)) {
-                Row {
-                    Text(
-                        text = record.text ?: "",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
+        Column(modifier = Modifier.padding(start = 16.dp)) {
+            Row {
                 Text(
-                    text = feed.post.indexedAt ?: "unknown",
-                    style = MaterialTheme.typography.bodySmall
+                    text = record.text ?: "",
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
-        }
-    } else {
-        // 自分以外のポストにはアクションボタンを表示
-        val subjectRef = RepoStrongRef(feed.post.uri!!, feed.post.cid!!)
-        val rootRef: RepoStrongRef
-        if (feed.reply?.root?.uri != null && feed.reply?.root?.cid != null) {
-            rootRef = RepoStrongRef(feed.reply?.root?.uri!!, feed.reply?.root?.cid!!)
-        } else {
-            rootRef = subjectRef
-        }
-
-        Row(modifier = Modifier.padding(8.dp)) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(feed.post.author?.avatar)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "avatar",
-                modifier = Modifier
-                    .size(48.dp)
+            Text(
+                text = feed.post.indexedAt ?: "unknown",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
             )
 
-            Column(modifier = Modifier.padding(start = 16.dp)) {
-                Row {
-                    Text(
-                        text = record.text ?: "",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+            // 自分以外のポストにはアクションボタンを表示
+            if (!isMyPost) {
+                val subjectRef = RepoStrongRef(feed.post.uri!!, feed.post.cid!!)
+                val rootRef: RepoStrongRef
+                if (feed.reply?.root?.uri != null && feed.reply?.root?.cid != null) {
+                    rootRef = RepoStrongRef(feed.reply?.root?.uri!!, feed.reply?.root?.cid!!)
+                } else {
+                    rootRef = subjectRef
                 }
-                Text(
-                    text = feed.post.indexedAt ?: "unknown",
-                    style = MaterialTheme.typography.bodySmall
-                )
 
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     Icon(
@@ -126,7 +102,6 @@ fun PostItem(
                                 }
                             }
                     )
-
                 }
             }
         }
