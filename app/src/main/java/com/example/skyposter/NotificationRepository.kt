@@ -29,7 +29,8 @@ class NotificationRepository (
     val context: Context
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
-    private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null)
+    private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null) // 見た通知の最新時刻
+    private var latestNotifIndexedAt: String? = null // 来た通知の最新時刻
     private val recordCache = mutableMapOf<String, FeedPost>()
 
     companion object {
@@ -69,13 +70,17 @@ class NotificationRepository (
             )
         }
 
+        latestNotifIndexedAt = notifs.firstOrNull()?.indexedAt
+
         return Pair(result, newCursor)
     }
 
     fun markAllAsRead() {
-        // 一括既読処理用: 現在の最新時刻を保存
-        lastSeenNotifIndexedAt?.let {
-            prefs.edit { putString(KEY_LAST_SEEN, it) }
+        latestNotifIndexedAt?.let {
+            lastSeenNotifIndexedAt = it
+            prefs.edit {
+                putString(KEY_LAST_SEEN, it)
+            }
         }
     }
 

@@ -33,7 +33,6 @@ fun PostItem(
 ) {
     val record = feed.post.record?.asFeedPost!!
     val isMyPost = feed.post.author?.did == myDid
-    println("myDid: $myDid")
 
     if (isMyPost) {
         // 自分のポストにはアクションボタンを非表示
