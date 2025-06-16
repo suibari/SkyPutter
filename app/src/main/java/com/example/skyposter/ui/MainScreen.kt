@@ -49,10 +49,10 @@ fun MainScreen(
 
     // メイン画面バックグラウンド処理
     LaunchedEffect(Unit) {
-        notificationViewModel.loadInitialItems()
+        notificationViewModel.loadInitialItemsIfNeeded()
         notificationViewModel.startPolling()
-        userPostViewModel.loadInitialItems()
-        likesBackViewModel.loadInitialItems()
+        userPostViewModel.loadInitialItemsIfNeeded()
+        likesBackViewModel.loadInitialItemsIfNeeded()
     }
 
     Scaffold(

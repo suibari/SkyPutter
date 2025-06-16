@@ -14,6 +14,8 @@ class NotificationViewModel constructor(
     private val repo: NotificationRepository
 ) : PaginatedListViewModel<DisplayNotification>() {
 
+    private var isPolling = false
+
     override suspend fun fetchItems(
         limit: Int,
         cursor: String?
@@ -22,17 +24,30 @@ class NotificationViewModel constructor(
     }
 
     fun startPolling() {
+        if (isPolling) return // すでに開始済みなら無視
+        isPolling = true
+
         viewModelScope.launch {
-            while (true) {
-                val (notifs, newCursor) = repo.fetchNotifications(15)
-                val newNotifs = notifs.filter { notif -> notif.isNew }
-                if (newNotifs.isNotEmpty()) {
-                    _items.addAll(0, newNotifs)
-                    sendDeviceNotification(newNotifs)
+            while (isPolling) {
+                try {
+                    val (notifs, newCursor) = repo.fetchNotifications(15)
+                    val newNotifs = notifs.filter { it.isNew }
+                    if (newNotifs.isNotEmpty()) {
+                        _items.addAll(0, newNotifs)
+                        sendDeviceNotification(newNotifs)
+                    }
+                    delay(60_000)
+                } catch (e: Exception) {
+                    // ネットワークなどの例外をキャッチしてロギング等
+                    e.printStackTrace()
+                    delay(60_000) // 次のリトライまで待機
                 }
-                delay(60_000)
             }
         }
+    }
+
+    fun stopPolling() {
+        isPolling = false
     }
 
     private fun sendDeviceNotification(notifs: List<DisplayNotification>) {

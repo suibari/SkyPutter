@@ -10,6 +10,7 @@ abstract class PaginatedListViewModel<T> : ViewModel() {
     val items: List<T> = _items
     protected var cursor: String? = null
     protected var isLoading = false
+    private var initialized = false
 
     abstract suspend fun fetchItems(limit: Int, cursor: String? = null): Pair<List<T>, String?>
 
@@ -22,6 +23,12 @@ abstract class PaginatedListViewModel<T> : ViewModel() {
             cursor = newCursor
             isLoading = false
         }
+    }
+
+    fun loadInitialItemsIfNeeded(limit: Int = 10) {
+        if (initialized) return
+        initialized = true
+        loadInitialItems(limit)
     }
 
     fun loadMoreItems(limit: Int = 10) {
