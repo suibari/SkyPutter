@@ -17,7 +17,9 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.skyposter.ui.*
 import com.example.skyposter.ui.theme.SkyPosterTheme
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -29,22 +31,21 @@ class MainActivity : ComponentActivity() {
             SkyPosterTheme {
                 val context = LocalContext.current
                 val navController = rememberNavController()
-                val sessionManager = app.sessionManager
-                val mainViewModel = remember { MainViewModel(sessionManager) }
+                val mainViewModel = remember { MainViewModel() }
                 var myDid: String? = null
 
                 // notification factory
-                val notificationRepo = NotificationRepository(sessionManager, context)
+                val notificationRepo = NotificationRepository(context)
                 val factoryNotification = remember { GenericViewModelFactory { NotificationViewModel(notificationRepo) } }
                 val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
 
                 // profile factory
-                val userPostRepo = UserPostRepository(sessionManager, context)
+                val userPostRepo = UserPostRepository()
                 val factoryUserPost = remember { GenericViewModelFactory { UserPostViewModel(userPostRepo) } }
                 val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
 
                 // likesback factory
-                val likesbackRepo = LikesBackRepository(sessionManager, context)
+                val likesbackRepo = LikesBackRepository()
                 val factoryLikesBack = remember { GenericViewModelFactory { LikesBackViewModel(likesbackRepo) } }
                 val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
 
@@ -52,11 +53,14 @@ class MainActivity : ComponentActivity() {
                 var isCheckedSession by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
-                    if (sessionManager.hasSession()) {
-                        // バックグラウンド処理起動
-                        scheduleNotificationWorker(context)
+                    val hasSession = withContext(Dispatchers.IO) {
+                        SessionManager.hasSession()
+                    }
 
-                        myDid = sessionManager.getSession().did
+                    if (hasSession) {
+                        myDid = withContext(Dispatchers.IO) {
+                            SessionManager.getSession().did
+                        }
 
                         // メイン画面表示
                         navController.navigate(Screen.Main.route) {
@@ -100,7 +104,7 @@ class MainActivity : ComponentActivity() {
                             likesBackViewModel = likesBackViewModel,
                             onLogout = {
                                 coroutineScope.launch {
-                                    sessionManager.clearSession()
+                                    SessionManager.clearSession()
                                     navController.navigate(Screen.Login.route) {
                                         popUpTo(Screen.Main.route) { inclusive = true }
                                     }

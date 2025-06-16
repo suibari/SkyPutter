@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.skyposter.SessionManager
 import com.example.skyposter.SkyPosterApp
 import kotlinx.coroutines.*
 import work.socialhub.kbsky.BlueskyFactory
@@ -21,7 +22,6 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    val sessionManager = application.sessionManager
 
     Column(
         modifier = Modifier
@@ -68,7 +68,7 @@ fun LoginScreen(
                         val did = response.data.did
 
                         // セッション保存
-                        sessionManager.saveSession(accessJwt, refreshJwt, did)
+                        SessionManager.saveSession(accessJwt, refreshJwt, did)
 
                         withContext(Dispatchers.Main) {
                             onLoginSuccess()

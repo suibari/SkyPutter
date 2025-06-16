@@ -25,7 +25,6 @@ data class DisplayNotification(
 )
 
 class NotificationRepository (
-    private val sessionManager: SessionManager,
     val context: Context
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
@@ -39,16 +38,17 @@ class NotificationRepository (
 
     suspend fun fetchNotifications(limit: Int, cursor: String? = null): Pair<List<DisplayNotification>, String?> {
         Log.i("NotificationRepository", "fetching notification, cursor: $cursor")
-        val auth = sessionManager.getAuth() ?: return Pair(emptyList(), null)
-        val response = BlueskyFactory
-            .instance(BSKY_SOCIAL.uri)
-            .notification()
-            .listNotifications(
-                NotificationListNotificationsRequest(auth).also {
-                    it.limit = limit
-                    it.cursor = cursor
-                }
-            )
+        val response = SessionManager.runWithAuthRetry { auth ->
+            BlueskyFactory
+                .instance(BSKY_SOCIAL.uri)
+                .notification()
+                .listNotifications(
+                    NotificationListNotificationsRequest(auth).also {
+                        it.limit = limit
+                        it.cursor = cursor
+                    }
+                )
+        }
 
         val notifs = response.data.notifications
         val newCursor = response.data.cursor
@@ -84,19 +84,21 @@ class NotificationRepository (
         }
     }
 
-    private fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
+    private suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
         return try {
             refRecord?.let { ref ->
                 val uri = ref.uri
                 recordCache[uri] ?: run {
                     val (repo, collection, rkey) = BskyUtil.parseAtUri(uri)
                         ?: return@let null
-                    val record = BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .repo()
-                        .getRecord(
-                            RepoGetRecordRequest(repo, collection, rkey)
-                        )
+                    val record = SessionManager.runWithAuthRetry { auth ->
+                        BlueskyFactory
+                            .instance(BSKY_SOCIAL.uri)
+                            .repo()
+                            .getRecord(
+                                RepoGetRecordRequest(repo, collection, rkey)
+                            )
+                    }
                     val feedPost = record.data.value.asFeedPost
                     feedPost?.also { recordCache[uri] = it }
                 }
@@ -108,18 +110,20 @@ class NotificationRepository (
     }
 
     suspend fun likePost(record: RepoStrongRef) {
-        val auth = sessionManager.getAuth() ?: return
-        BlueskyFactory
-            .instance(BSKY_SOCIAL.uri)
-            .feed()
-            .like(FeedLikeRequest(auth).also { it.subject = record })
+        SessionManager.runWithAuthRetry { auth ->
+            BlueskyFactory
+                .instance(BSKY_SOCIAL.uri)
+                .feed()
+                .like(FeedLikeRequest(auth).also { it.subject = record })
+        }
     }
 
     suspend fun repostPost(record: RepoStrongRef) {
-        val auth = sessionManager.getAuth() ?: return
-        BlueskyFactory
-            .instance(BSKY_SOCIAL.uri)
-            .feed()
-            .repost(FeedRepostRequest(auth).also { it.subject = record })
+        SessionManager.runWithAuthRetry { auth ->
+            BlueskyFactory
+                .instance(BSKY_SOCIAL.uri)
+                .feed()
+                .repost(FeedRepostRequest(auth).also { it.subject = record })
+        }
     }
 }

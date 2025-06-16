@@ -12,8 +12,7 @@ class NotificationWorker(
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         Log.i("NotificationWorker", "doWork() called: polling notifications")
-        val sessionManager = SessionManager(appContext)
-        val repository = NotificationRepository(sessionManager, appContext)
+        val repository = NotificationRepository(appContext)
 
         repository.fetchNotifications(50)
 

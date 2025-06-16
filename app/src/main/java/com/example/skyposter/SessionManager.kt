@@ -2,6 +2,8 @@ package com.example.skyposter
 
 import android.content.Context
 import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -30,10 +32,17 @@ data class Session(
     val did: String?
 )
 
-class SessionManager(private val context: Context) {
+object SessionManager {
+    private lateinit var appContext: Context
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "session")
+
+
+    fun initialize(context: Context) {
+        appContext = context.applicationContext
+    }
 
     suspend fun saveSession(accessJwt: String, refreshJwt: String, did: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[SessionKeys.accessJwt] = accessJwt
             prefs[SessionKeys.refreshJwt] = refreshJwt
             prefs[SessionKeys.did] = did
@@ -41,62 +50,66 @@ class SessionManager(private val context: Context) {
     }
 
     suspend fun getSession(): Session {
-        val prefs = context.dataStore.data.first()
+        val prefs = appContext.dataStore.data.first()
         val access = prefs[SessionKeys.accessJwt]
         val refresh = prefs[SessionKeys.refreshJwt]
         val did = prefs[SessionKeys.did]
         return Session(access, refresh, did)
     }
 
-    suspend fun hasSession(): Boolean {
-        val prefs = context.dataStore.data.first()
-        val access = prefs[SessionKeys.accessJwt]
-        val refresh = prefs[SessionKeys.refreshJwt]
-        val did = prefs[SessionKeys.did]
-        return (access != null && refresh != null && did != null)
+    fun hasSession(): Boolean {
+        // 非suspend関数からは本当のチェックができないため、トークンがセット済みかで判定
+        // 利用時は getAuth() で安全にチェックすること
+        return this::appContext.isInitialized
     }
 
     suspend fun getAuth(): AuthProvider? {
-        val prefs = context.dataStore.data.first()
+        val prefs = appContext.dataStore.data.first()
         val access = prefs[SessionKeys.accessJwt]
         val refresh = prefs[SessionKeys.refreshJwt]
         val did = prefs[SessionKeys.did]
 
         if (access != null && refresh != null && did != null) {
-            var auth: AuthProvider = BearerTokenAuthProvider(access, refresh)
-
-            try {
-                // getTimelineにtryし、expiredならrefreshする
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .feed()
-                    .getTimeline(FeedGetTimelineRequest(auth))
-                return auth
-            } catch (e: ATProtocolException) {
-                if (e.message?.contains("expired") == true) {
-                    // refreshをaccessJwtに設定してフェッチしないと通らない!
-                    val authRefresh: AuthProvider = BearerTokenAuthProvider(refresh)
-                    val response = BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .server()
-                        .refreshSession(AuthRequest(authRefresh))
-                    val accessNew = response.data.accessJwt
-                    val refreshNew = response.data.refreshJwt
-                    val authNew: AuthProvider = BearerTokenAuthProvider(accessNew, refreshNew)
-                    saveSession(accessNew, refreshNew, did)
-                    Log.i("Session", "session refreshed!")
-                    return authNew
-                } else {
-                    Log.e("Session", "セッション再取得失敗: ${e.message}")
-                    throw e
-                }
-            }
+            return BearerTokenAuthProvider(access, refresh)
         }
 
         return null
     }
 
     suspend fun clearSession() {
-        context.dataStore.edit { it.clear() }
+        appContext.dataStore.edit { it.clear() }
     }
+
+    suspend fun <T> runWithAuthRetry(block: suspend (AuthProvider) -> T): T {
+        val auth = getAuth() ?: throw IllegalStateException("No session")
+
+        try {
+            return block(auth)
+        } catch (e: ATProtocolException) {
+            if (e.message?.contains("expired") == true) {
+                val prefs = appContext.dataStore.data.first()
+                val refresh = prefs[SessionKeys.refreshJwt]
+
+                // refresh!
+                val authRefresh = BearerTokenAuthProvider(refresh!!)
+                val response = BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .server()
+                    .refreshSession(AuthRequest(authRefresh))
+                val accessNew = response.data.accessJwt
+                val refreshNew = response.data.refreshJwt
+                val did = response.data.did
+
+                val authNew = BearerTokenAuthProvider(accessNew, refreshNew)
+                saveSession(accessNew, refreshNew, did)
+                Log.i("Session", "session refreshed!")
+
+                // retry with new token
+                return block(authNew)
+            } else {
+                throw e
+            }
+        }
+    }
+
 }

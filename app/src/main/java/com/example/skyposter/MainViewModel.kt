@@ -15,10 +15,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-class MainViewModel(
-    sessionManager: SessionManager
-) : ViewModel() {
-    private var _auth: AuthProvider? = null
+class MainViewModel() : ViewModel() {
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
     var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
     var parentPost by mutableStateOf<FeedPost?>(null)
@@ -26,13 +23,14 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
-            _auth = sessionManager.getAuth() ?: return@launch
-            val response = BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .actor()
-                .getProfile(ActorGetProfileRequest(_auth!!).also {
-                    it.actor = _auth!!.did
-                })
+            val response = SessionManager.runWithAuthRetry { auth ->
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .actor()
+                    .getProfile(ActorGetProfileRequest(auth).also {
+                        it.actor = auth.did
+                    })
+            }
             _profile.value = response.data
         }
     }
@@ -49,21 +47,25 @@ class MainViewModel(
                     it.root = rootPostRecord
                     it.parent = parentPostRecord
                 }
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .feed()
-                    .post(FeedPostRequest(_auth!!).also {
-                        it.text = postText
-                        it.reply = reply
-                    })
+                SessionManager.runWithAuthRetry { auth ->
+                    BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .feed()
+                        .post(FeedPostRequest(auth).also {
+                            it.text = postText
+                            it.reply = reply
+                        })
+                }
             } else {
                 // 通常投稿
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .feed()
-                    .post(FeedPostRequest(_auth!!).also {
-                        it.text = postText
-                    })
+                SessionManager.runWithAuthRetry { auth ->
+                    BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .feed()
+                        .post(FeedPostRequest(auth).also {
+                            it.text = postText
+                        })
+                }
             }
         }
     }

@@ -27,6 +27,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.skyposter.LikesBackViewModel
+import com.example.skyposter.SessionManager
 import com.example.skyposter.UserPostViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,10 +43,8 @@ fun MainScreen(
     onOpenUserPost: () -> Unit,
     onOpenLikesBack: () -> Unit,
 ) {
-    val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
-    val context = LocalContext.current
 
     // メイン画面バックグラウンド処理
     LaunchedEffect(Unit) {
@@ -86,7 +85,7 @@ fun MainScreen(
                                 text = { Text("ログアウト") },
                                 onClick = {
                                     coroutineScope.launch {
-                                        sessionManager.clearSession()
+                                        SessionManager.clearSession()
                                         onLogout()
                                     }
                                 }
