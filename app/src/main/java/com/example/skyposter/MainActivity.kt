@@ -30,9 +30,14 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val sessionManager = app.sessionManager
                 val mainViewModel = remember { MainViewModel(sessionManager) }
-                val repo = remember { NotificationRepository(sessionManager, context) }
-                val factory = remember { NotificationViewModelFactory(repo) }
-                val notificationViewModel: NotificationViewModel = viewModel(factory = factory)
+
+                val notificationRepo = NotificationRepository(sessionManager, context)
+                val factoryNotification = remember { GenericViewModelFactory { NotificationViewModel(notificationRepo) } }
+                val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
+
+                val userPostRepo = UserPostRepository(sessionManager, context)
+                val factoryUserPost = remember { GenericViewModelFactory { UserPostViewModel(userPostRepo) } }
+                val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
 
                 val coroutineScope = rememberCoroutineScope()
                 var isCheckedSession by remember { mutableStateOf(false) }
@@ -69,7 +74,7 @@ class MainActivity : ComponentActivity() {
                             application = app,
                             onLoginSuccess = {
                                 coroutineScope.launch {
-                                    notificationViewModel.loadInitialNotifications()
+                                    notificationViewModel.loadInitialItems()
                                 }
                                 navController.navigate(Screen.Main.route) {
                                     popUpTo(Screen.Login.route) { inclusive = true }
@@ -90,10 +95,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onOpenNotification = {
-                                notificationViewModel.loadInitialNotifications() // 本当はここでフェッチすると時間がかかるからやだ…
+                                notificationViewModel.loadInitialItems() // 本当はここでフェッチすると時間がかかるからやだ…
                                 navController.navigate(Screen.NotificationList.route)
                             },
                             onOpenUserPost = {
+                                userPostViewModel.loadInitialItems()
                                 navController.navigate(Screen.UserPost.route)
                             }
                         )
@@ -105,6 +111,11 @@ class MainActivity : ComponentActivity() {
                             onNavigateToMain = {
                                 navController.navigate("main")
                             }
+                        )
+                    }
+                    composable(Screen.UserPost.route) {
+                        UserPostListScreen(
+                            viewModel = userPostViewModel,
                         )
                     }
                 }

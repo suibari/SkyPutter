@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -15,41 +16,27 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.skyposter.SessionManager
+import com.example.skyposter.UserPostViewModel
 import kotlinx.coroutines.launch
-import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
-import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 @Composable
-fun UserPostListScreen(sessionManager: SessionManager) {
-    val coroutineScope = rememberCoroutineScope()
-    var posts by remember { mutableStateOf<List<FeedDefsPostView>>(emptyList()) }
-
-    LaunchedEffect(Unit) {
-        coroutineScope.launch {
-            val auth = sessionManager.getAuth() ?: return@launch
-            val did = sessionManager.getSession().did ?: return@launch
-
-            val response = BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .getAuthorFeed(
-                    FeedGetAuthorFeedRequest(auth).also {
-                        it.actor = did
-                        it.limit = 100
-                    }
-                )
-
-            posts = response.data.feed.map { item -> item.post }
-        }
-    }
+fun UserPostListScreen(
+    viewModel: UserPostViewModel
+) {
+    val posts = viewModel.items
 
     LazyColumn {
-        items(posts) { post ->
+        itemsIndexed(posts) { index, post ->
             PostItem(post)
+
+            // 最後のアイテムが表示されたときに追加読み込み
+            if (index == posts.lastIndex) {
+                LaunchedEffect(index) {
+                    viewModel.loadMoreItems()
+                }
+            }
         }
     }
 }

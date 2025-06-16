@@ -24,7 +24,7 @@ data class DisplayNotification(
     val isReposted: Boolean = false,
 )
 
-class NotificationRepository(
+class NotificationRepository (
     private val sessionManager: SessionManager,
     val context: Context
 ) {

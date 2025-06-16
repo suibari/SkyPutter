@@ -2,59 +2,36 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
-import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.skyposter.PaginatedListViewModel
 import com.example.skyposter.R
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-class NotificationViewModel(
+class NotificationViewModel constructor(
     private val repo: NotificationRepository
-) : ViewModel() {
-    private val _notifications = mutableStateListOf<DisplayNotification>()
-    val notifications: List<DisplayNotification> = _notifications
-    private var cursor: String? = null
-    private var isLoading = false
+) : PaginatedListViewModel<DisplayNotification>() {
+
+    override suspend fun fetchItems(
+        limit: Int,
+        cursor: String?
+    ): Pair<List<DisplayNotification>, String?> {
+        return repo.fetchNotifications(limit, cursor)
+    }
 
     fun startPolling() {
         viewModelScope.launch {
             while (true) {
-                val (newNotifs, newCursor) = repo.fetchNotifications(15)
+                val (notifs, newCursor) = repo.fetchNotifications(15)
+                val newNotifs = notifs.filter { notif -> notif.isNew }
                 if (newNotifs.isNotEmpty()) {
-                    _notifications.addAll(0, newNotifs)
+                    _items.addAll(0, newNotifs)
                     sendDeviceNotification(newNotifs)
-                    cursor = newCursor
                 }
                 delay(60_000)
             }
-        }
-    }
-
-    fun loadInitialNotifications() {
-        viewModelScope.launch {
-            isLoading = true
-            val (newNotifs, newCursor) = repo.fetchNotifications(10)
-            _notifications.clear()
-            _notifications.addAll(newNotifs)
-            cursor = newCursor
-            println("cursor: $cursor")
-            isLoading = false
-        }
-    }
-
-    fun loadMoreNotifications() {
-        if (isLoading || cursor == null) return
-        viewModelScope.launch {
-            isLoading = true
-            val (newNotifs, newCursor) = repo.fetchNotifications(10, cursor)
-            _notifications.addAll(newNotifs)
-            cursor = newCursor
-            isLoading = false
         }
     }
 
@@ -94,8 +71,8 @@ class NotificationViewModel(
     suspend fun fetchNow() {
         repo.markAllAsRead()
         val (newNotifs, newCursor) = repo.fetchNotifications(15)
-        _notifications.clear()
-        _notifications.addAll(newNotifs)
+        _items.clear()
+        _items.addAll(newNotifs)
         cursor = newCursor
     }
 

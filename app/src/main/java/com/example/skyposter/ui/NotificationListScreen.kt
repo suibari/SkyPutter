@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -44,7 +43,7 @@ fun NotificationListScreen(
     mainViewModel: MainViewModel,
     onNavigateToMain: () -> Unit
 ) {
-    val notifications = viewModel.notifications
+    val notifications = viewModel.items
     val refreshing = remember { mutableStateOf(false) }
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
@@ -81,7 +80,7 @@ fun NotificationListScreen(
                 // 最後のアイテムが表示されたときに追加読み込み
                 if (index == notifications.lastIndex) {
                     LaunchedEffect(index) {
-                        viewModel.loadMoreNotifications()
+                        viewModel.loadMoreItems()
                     }
                 }
             }
@@ -151,7 +150,6 @@ fun NotificationItem(
             if (
                 notification.parentPostRecord != null &&
                 notification.rootPostRecord != null &&
-                notification.parentPost != null &&
                 subjectRecord != null
                 ) {
 
@@ -185,16 +183,16 @@ fun NotificationItem(
                             }
                     )
                 }
+            }
 
-                // 通知元ポスト
-                if (parentPost != null) {
-                    Text(
-                        text = parentPost.text ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
+            // 通知元ポスト
+            if (parentPost != null) {
+                Text(
+                    text = parentPost.text ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
         }
     }
