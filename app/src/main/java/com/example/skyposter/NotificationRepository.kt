@@ -7,6 +7,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNot
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import androidx.core.content.edit
 import com.example.skyposter.BskyUtil
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
@@ -38,6 +39,7 @@ class NotificationRepository (
 
     suspend fun fetchNotifications(limit: Int, cursor: String? = null): Pair<List<DisplayNotification>, String?> {
         Log.i("NotificationRepository", "fetching notification, cursor: $cursor")
+        // 通知取得
         val response = SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
@@ -60,13 +62,31 @@ class NotificationRepository (
                 ?: notif.record.asFeedLike?.subject
             val rootPostRecord = notif.record.asFeedPost?.reply?.root
             val parentPost: FeedPost? = getRecord(parentPostRecord)
+            var isLiked: Boolean = false
+            var isReposted: Boolean = false
+
+            if (notif.reason == "reply") {
+                val uri: List<String> = listOf(notif.uri)
+                val response = SessionManager.runWithAuthRetry { auth ->
+                    BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .feed()
+                        .getPosts(FeedGetPostsRequest(auth).also {
+                            it.uris = uri
+                        })
+                }
+                isLiked = response.data.posts[0].viewer?.like != null
+                isReposted = response.data.posts[0].viewer?.repost != null
+            }
 
             DisplayNotification(
                 raw = notif,
                 isNew = isNew,
                 parentPost = parentPost,
                 parentPostRecord = parentPostRecord,
-                rootPostRecord = rootPostRecord
+                rootPostRecord = rootPostRecord,
+                isLiked = isLiked,
+                isReposted = isReposted,
             )
         }
 

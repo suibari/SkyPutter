@@ -4,9 +4,9 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 
 class UserPostViewModel (
     private val repo: UserPostRepository
-) : PaginatedListViewModel<FeedDefsFeedViewPost>() {
+) : PaginatedListViewModel<DisplayFeed>() {
 
-    override suspend fun fetchItems(limit: Int, cursor: String?): Pair<List<FeedDefsFeedViewPost>, String?> {
+    override suspend fun fetchItems(limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
         return repo.fetchUserPosts(limit, cursor)
     }
 }

@@ -32,26 +32,26 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
+import com.example.skyposter.DisplayFeed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @Composable
 fun PostItem(
-    feed: FeedDefsFeedViewPost,
+    feed: DisplayFeed,
     myDid: String,
     onReply: ((parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit)?,
     onLike: ((parentRecord: RepoStrongRef) -> Unit)?,
     onRepost: ((parentRecord: RepoStrongRef) -> Unit)?,
 ) {
-    val record = feed.post.record?.asFeedPost!!
-    val isMyPost = feed.post.author?.did == myDid
+    val record = feed.raw.post.record?.asFeedPost!!
+    val isMyPost = feed.raw.post.author?.did == myDid
     val selectedImage = remember { mutableStateOf<String?>(null) }
 
     Row(modifier = Modifier.padding(8.dp)) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(feed.post.author?.avatar)
+                .data(feed.raw.post.author?.avatar)
                 .crossfade(true)
                 .build(),
             contentDescription = "avatar",
@@ -67,13 +67,13 @@ fun PostItem(
                 )
             }
             Text(
-                text = feed.post.indexedAt ?: "unknown",
+                text = feed.raw.post.indexedAt ?: "unknown",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
 
             // --- 画像表示 ---
-            val embed = feed.post.embed
+            val embed = feed.raw.post.embed
             if (embed?.asImages != null) {
                 val images = embed.asImages?.images
                 Row(modifier = Modifier.padding(top = 8.dp)) {
@@ -117,13 +117,15 @@ fun PostItem(
 
             // 自分以外のポストにはアクションボタンを表示
             if (!isMyPost) {
-                val subjectRef = RepoStrongRef(feed.post.uri!!, feed.post.cid!!)
+                val subjectRef = RepoStrongRef(feed.raw.post.uri!!, feed.raw.post.cid!!)
                 val rootRef: RepoStrongRef
-                if (feed.reply?.root?.uri != null && feed.reply?.root?.cid != null) {
-                    rootRef = RepoStrongRef(feed.reply?.root?.uri!!, feed.reply?.root?.cid!!)
+                if (feed.raw.reply?.root?.uri != null && feed.raw.reply?.root?.cid != null) {
+                    rootRef = RepoStrongRef(feed.raw.reply?.root?.uri!!, feed.raw.reply?.root?.cid!!)
                 } else {
                     rootRef = subjectRef
                 }
+                val likeColor = if (feed.isLiked == true) Color.Red else Color.Black
+                val repostColor = if (feed.isReposted == true) Color.Green else Color.Black
 
                 Row(modifier = Modifier.padding(top = 8.dp)) {
                     Icon(
@@ -140,6 +142,7 @@ fun PostItem(
                     Icon(
                         Icons.Default.FavoriteBorder,
                         contentDescription = "いいね",
+                        tint = likeColor,
                         modifier = Modifier
                             .padding(end = 8.dp)
                             .clickable {
@@ -151,6 +154,7 @@ fun PostItem(
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = "リポスト",
+                        tint = repostColor,
                         modifier = Modifier
                             .clickable {
                                 if (onRepost != null) {

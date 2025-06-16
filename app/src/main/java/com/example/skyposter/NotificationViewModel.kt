@@ -102,9 +102,21 @@ class NotificationViewModel constructor(
 
     suspend fun likePost(record: RepoStrongRef) {
         repo.likePost(record)
+
+        val index = _items.indexOfFirst { it.raw.uri == record.uri }
+        if (index != -1) {
+            val item = _items[index]
+            _items[index] = item.copy(isLiked = !(item.isLiked ?: false))
+        }
     }
 
     suspend fun repostPost(record: RepoStrongRef) {
         repo.repostPost(record)
+
+        val index = _items.indexOfFirst { it.raw.uri == record.uri }
+        if (index != -1) {
+            val item = _items[index]
+            _items[index] = item.copy(isReposted = !(item.isReposted ?: false))
+        }
     }
 }
