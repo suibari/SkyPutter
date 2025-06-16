@@ -1,6 +1,7 @@
 package com.example.skyposter.ui
 
 import MainViewModel
+import NotificationViewModel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,26 +19,41 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.example.skyposter.LikesBackViewModel
+import com.example.skyposter.UserPostViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     application: SkyPosterApp,
     viewModel: MainViewModel,
+    notificationViewModel: NotificationViewModel,
+    userPostViewModel: UserPostViewModel,
+    likesBackViewModel: LikesBackViewModel,
     onLogout: () -> Unit,
     onOpenNotification: () -> Unit,
     onOpenUserPost: () -> Unit,
+    onOpenLikesBack: () -> Unit,
 ) {
     val sessionManager = application.sessionManager
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
     val context = LocalContext.current
+
+    // メイン画面バックグラウンド処理
+    LaunchedEffect(Unit) {
+        notificationViewModel.loadInitialItems()
+        notificationViewModel.startPolling()
+        userPostViewModel.loadInitialItems()
+        likesBackViewModel.loadInitialItems()
+    }
 
     Scaffold(
         topBar = {
@@ -79,6 +95,11 @@ fun MainScreen(
                     }
                 },
                 actions = {
+                    // LikesBack
+                    IconButton(onClick = onOpenLikesBack) {
+                        Icon(Icons.Default.Favorite, contentDescription = "LikesBack")
+                    }
+
                     // 右上通知アイコン
                     IconButton(onClick = onOpenNotification) {
                         Icon(Icons.Default.Notifications, contentDescription = "通知")

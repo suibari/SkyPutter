@@ -3,6 +3,7 @@ package com.example.skyposter
 import MainViewModel
 import NotificationRepository
 import NotificationViewModel
+import Screen
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -31,13 +32,20 @@ class MainActivity : ComponentActivity() {
                 val sessionManager = app.sessionManager
                 val mainViewModel = remember { MainViewModel(sessionManager) }
 
+                // notification factory
                 val notificationRepo = NotificationRepository(sessionManager, context)
                 val factoryNotification = remember { GenericViewModelFactory { NotificationViewModel(notificationRepo) } }
                 val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
 
+                // profile factory
                 val userPostRepo = UserPostRepository(sessionManager, context)
                 val factoryUserPost = remember { GenericViewModelFactory { UserPostViewModel(userPostRepo) } }
                 val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
+
+                // likesback factory
+                val likesbackRepo = LikesBackRepository(sessionManager, context)
+                val factoryLikesBack = remember { GenericViewModelFactory { LikesBackViewModel(likesbackRepo) } }
+                val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
 
                 val coroutineScope = rememberCoroutineScope()
                 var isCheckedSession by remember { mutableStateOf(false) }
@@ -45,11 +53,6 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     if (sessionManager.hasSession()) {
                         scheduleNotificationWorker(context)
-
-                        // 通知プリロード
-//                        coroutineScope.launch {
-//                            notificationViewModel.loadInitialNotifications()
-//                        }
 
                         navController.navigate(Screen.Main.route) {
                             popUpTo(Screen.Loading.route) { inclusive = true }
@@ -86,6 +89,9 @@ class MainActivity : ComponentActivity() {
                         MainScreen(
                             application = app,
                             viewModel = mainViewModel,
+                            notificationViewModel = notificationViewModel,
+                            userPostViewModel = userPostViewModel,
+                            likesBackViewModel = likesBackViewModel,
                             onLogout = {
                                 coroutineScope.launch {
                                     sessionManager.clearSession()
@@ -95,13 +101,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onOpenNotification = {
-                                notificationViewModel.loadInitialItems() // 本当はここでフェッチすると時間がかかるからやだ…
                                 navController.navigate(Screen.NotificationList.route)
                             },
                             onOpenUserPost = {
-                                userPostViewModel.loadInitialItems()
                                 navController.navigate(Screen.UserPost.route)
-                            }
+                            },
+                            onOpenLikesBack = {
+                                navController.navigate(Screen.LikesBack.route)
+                            },
                         )
                     }
                     composable(Screen.NotificationList.route) {
@@ -116,6 +123,11 @@ class MainActivity : ComponentActivity() {
                     composable(Screen.UserPost.route) {
                         UserPostListScreen(
                             viewModel = userPostViewModel,
+                        )
+                    }
+                    composable(Screen.LikesBack.route) {
+                        LikesBackScreen(
+                            viewModel = likesBackViewModel,
                         )
                     }
                 }

@@ -16,14 +16,15 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.example.skyposter.LikesBackViewModel
 import com.example.skyposter.UserPostViewModel
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsPostView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 @Composable
-fun UserPostListScreen(
-    viewModel: UserPostViewModel
+fun LikesBackScreen(
+    viewModel: LikesBackViewModel
 ) {
     val posts = viewModel.items
 
