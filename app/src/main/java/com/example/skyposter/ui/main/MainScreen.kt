@@ -31,6 +31,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import com.example.skyposter.util.BskyUtil
+import com.example.skyposter.util.Util
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,9 +39,6 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 fun MainScreen(
     application: SkyPosterApp,
     viewModel: MainViewModel,
-    notificationViewModel: NotificationViewModel,
-    userPostViewModel: UserPostViewModel,
-    likesBackViewModel: LikesBackViewModel,
     onLogout: () -> Unit,
     onOpenNotification: () -> Unit,
     onOpenUserPost: () -> Unit,
@@ -52,13 +50,18 @@ fun MainScreen(
 
     val urlRegex = Regex("""https?://\S+""")
 
+    // 初期化処理
+    LaunchedEffect(Unit) {
+        viewModel.initialize()
+    }
+
     // 画像表示用ランチャー
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val (blob, contentType, aspectRatio) = getByteArrayFromUri(context, uri)
-            val filename = BskyUtil.getFileName(context, uri) ?: "image.jpg"
+            val (blob, contentType, aspectRatio) = Util.getByteArrayFromUri(context, uri)
+            val filename = Util.getFileName(context, uri) ?: "image.jpg"
 
             viewModel.setEmbed(
                 AttachedEmbed(
@@ -225,13 +228,4 @@ fun MainScreen(
             }
         }
     }
-}
-
-fun getByteArrayFromUri(context: Context, uri: Uri): Triple<ByteArray?, String?, EmbedDefsAspectRatio?> {
-
-    val blob = BskyUtil.uriToByteArray(context, uri)
-    val contentType = context.contentResolver.getType(uri)
-    val aspectRatio = BskyUtil.getAspectRatioObject(context, uri)
-
-    return Triple(blob, contentType, aspectRatio)
 }

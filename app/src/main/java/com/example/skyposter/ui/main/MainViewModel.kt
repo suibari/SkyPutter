@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.skyposter.data.repository.MainRepository
 import com.example.skyposter.ui.likesback.LikesBackViewModel
 import com.example.skyposter.util.SessionManager
 import com.example.skyposter.ui.post.UserPostViewModel
@@ -62,9 +63,10 @@ data class AttachedEmbed(
 }
 
 class MainViewModel(
-    userPostViewModel: UserPostViewModel,
-    notificationViewModel: NotificationViewModel,
-    likesBackViewModel: LikesBackViewModel,
+    val repo: MainRepository,
+    val userPostViewModel: UserPostViewModel,
+    val notificationViewModel: NotificationViewModel,
+    val likesBackViewModel: LikesBackViewModel,
 ) : ViewModel() {
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
     var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
@@ -75,22 +77,28 @@ class MainViewModel(
     val embed: MutableState<AttachedEmbed?> = _embed
     private var isFetchingOgImage = false
 
-    init {
-        viewModelScope.launch {
-            val response = SessionManager.runWithAuthRetry { auth ->
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .actor()
-                    .getProfile(ActorGetProfileRequest(auth).also {
-                        it.actor = auth.did
-                    })
-            }
-            _profile.value = response.data
 
-            userPostViewModel.loadInitialItemsIfNeeded()
-            notificationViewModel.loadInitialItemsIfNeeded()
-            notificationViewModel.startPolling()
-            likesBackViewModel.loadInitialItemsIfNeeded()
+    fun initialize() {
+        viewModelScope.launch {
+            try {
+                val profile = withContext(Dispatchers.IO) {
+                    repo.getProfile()
+                }
+                _profile.value = profile
+
+                // UI側と関係の薄いロジックもできるだけIOで
+                withContext(Dispatchers.IO) {
+                    userPostViewModel.loadInitialItemsIfNeeded()
+                    notificationViewModel.loadInitialItemsIfNeeded()
+                    likesBackViewModel.loadInitialItemsIfNeeded()
+                }
+
+                // UIに関係するものはメインでOK
+                notificationViewModel.startPolling()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

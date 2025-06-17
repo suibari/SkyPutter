@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import com.example.skyposter.data.model.GenericViewModelFactory
 import com.example.skyposter.data.model.SessionViewModel
 import com.example.skyposter.data.repository.LikesBackRepository
+import com.example.skyposter.data.repository.MainRepository
 import com.example.skyposter.data.repository.NotificationRepository
 import com.example.skyposter.data.repository.UserPostRepository
 import com.example.skyposter.ui.likesback.LikesBackScreen
@@ -64,7 +65,9 @@ class MainActivity : ComponentActivity() {
                 val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
 
                 // main factory
+                val mainRepo = MainRepository()
                 val factoryMain = GenericViewModelFactory { MainViewModel(
+                    repo = mainRepo,
                     userPostViewModel = userPostViewModel,
                     notificationViewModel = notificationViewModel,
                     likesBackViewModel = likesBackViewModel,
@@ -102,9 +105,6 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 application = app,
                                 viewModel = mainViewModel,
-                                notificationViewModel = notificationViewModel,
-                                userPostViewModel = userPostViewModel,
-                                likesBackViewModel = likesBackViewModel,
                                 onLogout = {
                                     coroutineScope.launch {
                                         SessionManager.clearSession()
