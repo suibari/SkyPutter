@@ -1,4 +1,4 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.loading
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize

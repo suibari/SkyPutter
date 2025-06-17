@@ -1,8 +1,7 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.notification
 
-import com.example.skyposter.DisplayNotification
-import com.example.skyposter.MainViewModel
-import NotificationViewModel
+import com.example.skyposter.data.repository.DisplayNotification
+import com.example.skyposter.ui.main.MainViewModel
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

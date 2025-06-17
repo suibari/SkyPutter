@@ -1,6 +1,6 @@
 package com.example.skyposter
 
-import NotificationViewModel
+import com.example.skyposter.ui.notification.NotificationViewModel
 import Screen
 import android.content.Context
 import android.os.Bundle
@@ -13,8 +13,23 @@ import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.example.skyposter.ui.*
+import com.example.skyposter.data.model.GenericViewModelFactory
+import com.example.skyposter.data.model.SessionViewModel
+import com.example.skyposter.data.repository.LikesBackRepository
+import com.example.skyposter.data.repository.NotificationRepository
+import com.example.skyposter.data.repository.UserPostRepository
+import com.example.skyposter.ui.likesback.LikesBackScreen
+import com.example.skyposter.ui.likesback.LikesBackViewModel
+import com.example.skyposter.ui.loading.LoadingScreen
+import com.example.skyposter.ui.login.LoginScreen
+import com.example.skyposter.ui.main.MainScreen
+import com.example.skyposter.ui.main.MainViewModel
+import com.example.skyposter.ui.notification.NotificationListScreen
+import com.example.skyposter.ui.post.UserPostListScreen
+import com.example.skyposter.ui.post.UserPostViewModel
 import com.example.skyposter.ui.theme.SkyPosterTheme
+import com.example.skyposter.util.SessionManager
+import com.example.skyposter.worker.NotificationWorker
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 

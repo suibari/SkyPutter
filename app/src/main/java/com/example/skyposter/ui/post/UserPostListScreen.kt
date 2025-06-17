@@ -1,7 +1,6 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.post
 
 import androidx.compose.runtime.*
-import com.example.skyposter.UserPostViewModel
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.CoroutineScope

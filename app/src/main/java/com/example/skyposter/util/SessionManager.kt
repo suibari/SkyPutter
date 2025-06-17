@@ -1,4 +1,4 @@
-package com.example.skyposter
+package com.example.skyposter.util
 
 import android.content.Context
 import android.util.Log
@@ -10,13 +10,10 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetTimelineRequest
 import work.socialhub.kbsky.api.entity.share.AuthRequest
 import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
-import work.socialhub.kbsky.auth.api.entity.oauth.OAuthRefreshTokenRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
-import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 
 private val Context.dataStore by preferencesDataStore(name = "session")
 

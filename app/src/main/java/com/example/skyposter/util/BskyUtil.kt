@@ -1,4 +1,4 @@
-package com.example.skyposter
+package com.example.skyposter.util
 
 import android.content.Context
 import android.graphics.BitmapFactory

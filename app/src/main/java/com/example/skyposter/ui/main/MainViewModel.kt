@@ -1,6 +1,6 @@
-package com.example.skyposter
+package com.example.skyposter.ui.main
 
-import NotificationViewModel
+import com.example.skyposter.ui.notification.NotificationViewModel
 import android.net.Uri
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -9,6 +9,9 @@ import androidx.compose.runtime.setValue
 import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.skyposter.ui.likesback.LikesBackViewModel
+import com.example.skyposter.util.SessionManager
+import com.example.skyposter.ui.post.UserPostViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,12 +107,14 @@ class MainViewModel(
                     val response = BlueskyFactory
                         .instance(BSKY_SOCIAL.uri)
                         .repo()
-                        .uploadBlob(RepoUploadBlobRequest(
-                            auth = auth,
-                            bytes = embed.blob!!,
-                            name = embed.title,
-                            contentType = embed.contentType!!
-                            ))
+                        .uploadBlob(
+                            RepoUploadBlobRequest(
+                                auth = auth,
+                                bytes = embed.blob!!,
+                                name = embed.title,
+                                contentType = embed.contentType!!
+                            )
+                        )
 
                     val blobRef = response.data.blob
 

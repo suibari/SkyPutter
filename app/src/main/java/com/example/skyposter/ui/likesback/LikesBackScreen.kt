@@ -1,8 +1,8 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.likesback
 
-import com.example.skyposter.MainViewModel
+import com.example.skyposter.ui.main.MainViewModel
 import androidx.compose.runtime.*
-import com.example.skyposter.LikesBackViewModel
+import com.example.skyposter.ui.post.PostListScreen
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.CoroutineScope

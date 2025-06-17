@@ -1,4 +1,4 @@
-package com.example.skyposter
+package com.example.skyposter.data.model
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider

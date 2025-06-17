@@ -1,6 +1,7 @@
-package com.example.skyposter
+package com.example.skyposter.data.repository
 
 import android.util.Log
+import com.example.skyposter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest

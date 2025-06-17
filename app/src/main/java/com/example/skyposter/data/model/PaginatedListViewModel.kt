@@ -1,4 +1,4 @@
-package com.example.skyposter
+package com.example.skyposter.data.model
 
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel

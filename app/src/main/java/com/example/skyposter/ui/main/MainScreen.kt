@@ -1,7 +1,6 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.main
 
-import com.example.skyposter.MainViewModel
-import NotificationViewModel
+import com.example.skyposter.ui.notification.NotificationViewModel
 import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,22 +24,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.skyposter.LikesBackViewModel
-import com.example.skyposter.SessionManager
-import com.example.skyposter.UserPostViewModel
+import com.example.skyposter.ui.likesback.LikesBackViewModel
+import com.example.skyposter.util.SessionManager
+import com.example.skyposter.ui.post.UserPostViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
-import com.example.skyposter.AttachedEmbed
-import com.example.skyposter.BskyUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.example.skyposter.util.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
-import androidx.core.net.toUri
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.jsoup.Jsoup
-import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.example.skyposter.ui
+package com.example.skyposter.ui.login
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -6,7 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.skyposter.SessionManager
+import com.example.skyposter.util.SessionManager
 import com.example.skyposter.SkyPosterApp
 import kotlinx.coroutines.*
 import work.socialhub.kbsky.BlueskyFactory

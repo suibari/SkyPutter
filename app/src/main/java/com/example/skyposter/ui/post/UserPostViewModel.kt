@@ -1,6 +1,8 @@
-package com.example.skyposter
+package com.example.skyposter.ui.post
 
-import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
+import com.example.skyposter.data.model.PaginatedListViewModel
+import com.example.skyposter.data.repository.DisplayFeed
+import com.example.skyposter.data.repository.UserPostRepository
 
 class UserPostViewModel (
     private val repo: UserPostRepository
