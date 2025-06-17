@@ -1,8 +1,7 @@
 package com.example.skyposter.ui
 
-import MainViewModel
+import com.example.skyposter.MainViewModel
 import NotificationViewModel
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -32,7 +30,7 @@ import com.example.skyposter.UserPostViewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
-import android.webkit.MimeTypeMap
+import com.example.skyposter.AttachedEmbed
 import com.example.skyposter.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 
@@ -52,13 +50,26 @@ fun MainScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
-    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var embed by remember { mutableStateOf<AttachedEmbed?>(null) }
 
     // 画像表示用ランチャー
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        imageUri = uri
+        uri?.let {
+            val blob = BskyUtil.uriToByteArray(context, uri)
+            val filename = BskyUtil.getFileName(context, uri) ?: "image.jpg"
+            val contentType = context.contentResolver.getType(uri)
+            val aspectRatio = BskyUtil.getAspectRatioObject(context, uri)
+
+            embed = AttachedEmbed(
+                title = filename,
+                uri = uri,
+                blob = blob,
+                contentType = contentType,
+                aspectRatio = aspectRatio
+            )
+        }
     }
 
     // メイン画面バックグラウンド処理
@@ -134,28 +145,11 @@ fun MainScreen(
 
                 // 右下ポストボタン
                 Button(onClick = {
-                    // 画像をByteArrayに変換
-                    var blob: ByteArray? = null
-                    var filename: String? = null
-                    var contentType: String? = null
-                    var aspectRatio: EmbedDefsAspectRatio? = null
-
-                    if (imageUri != null) {
-                        // blob
-                        blob = BskyUtil.uriToByteArray(context, imageUri!!)
-                        // filename
-                        filename = BskyUtil.getFileName(context, imageUri!!)
-                        // contentType
-                        contentType = context.contentResolver.getType(imageUri!!)
-                        // aspectRatio
-                        aspectRatio = BskyUtil.getAspectRatioObject(context, imageUri!!)
-                    }
-
-                    viewModel.post(postText, blob, filename, contentType, aspectRatio)
+                    viewModel.post(postText, embed)
 
                     // ポスト後は初期化
                     postText = ""
-                    imageUri = null
+                    embed = null
                 }) {
                     Text("ポスト")
                 }
@@ -210,7 +204,7 @@ fun MainScreen(
             }
 
             // 添付画像確認
-            imageUri?.let { uri ->
+            embed?.uri?.let { uri ->
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(uri)

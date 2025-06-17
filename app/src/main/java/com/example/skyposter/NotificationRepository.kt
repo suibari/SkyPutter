@@ -1,12 +1,12 @@
+package com.example.skyposter
+
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
-import com.example.skyposter.SessionManager
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNotificationsRequest
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import androidx.core.content.edit
-import com.example.skyposter.BskyUtil
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
@@ -38,7 +38,7 @@ class NotificationRepository (
     }
 
     suspend fun fetchNotifications(limit: Int, cursor: String? = null): Pair<List<DisplayNotification>, String?> {
-        Log.i("NotificationRepository", "fetching notification, cursor: $cursor")
+        Log.i("com.example.skyposter.NotificationRepository", "fetching notification, cursor: $cursor")
         // 通知取得
         val response = SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory

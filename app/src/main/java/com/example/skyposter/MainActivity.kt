@@ -1,7 +1,5 @@
 package com.example.skyposter
 
-import MainViewModel
-import NotificationRepository
 import NotificationViewModel
 import Screen
 import android.content.Context
@@ -17,9 +15,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.skyposter.ui.*
 import com.example.skyposter.ui.theme.SkyPosterTheme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
