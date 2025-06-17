@@ -19,6 +19,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.skyposter.LikesBackViewModel
 import com.example.skyposter.UserPostViewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -35,6 +37,7 @@ fun LikesBackScreen(
     onNavigateToMain: () -> Unit,
 ) {
     val feeds = viewModel.items
+    val refreshing = remember { mutableStateOf(false) }
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
         mainViewModel.setReplyContext(
@@ -55,12 +58,21 @@ fun LikesBackScreen(
         }
     }
 
-    PostListScreen(
-        feeds = feeds,
-        myDid = myDid,
-        onLoadMore = { viewModel.loadMoreItems() },
-        onReply,
-        onLike,
-        onRepost,
-    )
+    SwipeRefresh(state = rememberSwipeRefreshState(refreshing.value), onRefresh = {
+        refreshing.value = true
+        // 強制更新ロジック
+        CoroutineScope(Dispatchers.IO).launch {
+            viewModel.fetchItems(10)
+            refreshing.value = false
+        }
+    }) {
+        PostListScreen(
+            feeds = feeds,
+            myDid = myDid,
+            onLoadMore = { viewModel.loadMoreItems() },
+            onReply,
+            onLike,
+            onRepost,
+        )
+    }
 }

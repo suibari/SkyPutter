@@ -32,52 +32,36 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val navController = rememberNavController()
                 val mainViewModel = remember { MainViewModel() }
-                var myDid: String? = null
+
+                // session management
+                val sessionViewModel: SessionViewModel = viewModel()
+                val hasSession = sessionViewModel.hasSession
+                val myDid = sessionViewModel.myDid
 
                 // notification factory
                 val notificationRepo = NotificationRepository(context)
-                val factoryNotification = remember { GenericViewModelFactory { NotificationViewModel(notificationRepo) } }
+                val factoryNotification = GenericViewModelFactory { NotificationViewModel(notificationRepo) }
                 val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
 
                 // profile factory
                 val userPostRepo = UserPostRepository()
-                val factoryUserPost = remember { GenericViewModelFactory { UserPostViewModel(userPostRepo) } }
+                val factoryUserPost = GenericViewModelFactory { UserPostViewModel(userPostRepo) }
                 val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
 
                 // likesback factory
                 val likesbackRepo = LikesBackRepository()
-                val factoryLikesBack = remember { GenericViewModelFactory { LikesBackViewModel(likesbackRepo) } }
+                val factoryLikesBack = GenericViewModelFactory { LikesBackViewModel(likesbackRepo) }
                 val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
 
                 val coroutineScope = rememberCoroutineScope()
-                var isCheckedSession by remember { mutableStateOf(false) }
-
-                LaunchedEffect(Unit) {
-                    val hasSession = withContext(Dispatchers.IO) {
-                        SessionManager.hasSession()
-                    }
-
-                    if (hasSession) {
-                        myDid = withContext(Dispatchers.IO) {
-                            SessionManager.getSession().did
-                        }
-
-                        // メイン画面表示
-                        navController.navigate(Screen.Main.route) {
-                            popUpTo(Screen.Loading.route) { inclusive = true }
-                        }
-                    } else {
-                        // ログイン画面表示
-                        navController.navigate(Screen.Login.route) {
-                            popUpTo(Screen.Loading.route) { inclusive = true }
-                        }
-                    }
-                    isCheckedSession = true
-                }
 
                 NavHost(
                     navController = navController,
-                    startDestination = Screen.Loading.route
+                    startDestination = when (hasSession) {
+                        null -> Screen.Loading.route
+                        true -> Screen.Main.route
+                        false -> Screen.Login.route
+                    }
                 ) {
                     composable(Screen.Loading.route) {
                         LoadingScreen()
@@ -96,30 +80,32 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(Screen.Main.route) {
-                        MainScreen(
-                            application = app,
-                            viewModel = mainViewModel,
-                            notificationViewModel = notificationViewModel,
-                            userPostViewModel = userPostViewModel,
-                            likesBackViewModel = likesBackViewModel,
-                            onLogout = {
-                                coroutineScope.launch {
-                                    SessionManager.clearSession()
-                                    navController.navigate(Screen.Login.route) {
-                                        popUpTo(Screen.Main.route) { inclusive = true }
+                        if (myDid != null) {
+                            MainScreen(
+                                application = app,
+                                viewModel = mainViewModel,
+                                notificationViewModel = notificationViewModel,
+                                userPostViewModel = userPostViewModel,
+                                likesBackViewModel = likesBackViewModel,
+                                onLogout = {
+                                    coroutineScope.launch {
+                                        SessionManager.clearSession()
+                                        navController.navigate(Screen.Login.route) {
+                                            popUpTo(Screen.Main.route) { inclusive = true }
+                                        }
                                     }
-                                }
-                            },
-                            onOpenNotification = {
-                                navController.navigate(Screen.NotificationList.route)
-                            },
-                            onOpenUserPost = {
-                                navController.navigate(Screen.UserPost.route)
-                            },
-                            onOpenLikesBack = {
-                                navController.navigate(Screen.LikesBack.route)
-                            },
-                        )
+                                },
+                                onOpenNotification = {
+                                    navController.navigate(Screen.NotificationList.route)
+                                },
+                                onOpenUserPost = {
+                                    navController.navigate(Screen.UserPost.route)
+                                },
+                                onOpenLikesBack = {
+                                    navController.navigate(Screen.LikesBack.route)
+                                },
+                            )
+                        }
                     }
                     composable(Screen.NotificationList.route) {
                         NotificationListScreen(
