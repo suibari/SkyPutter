@@ -29,6 +29,12 @@ import coil3.request.crossfade
 import com.example.skyposter.LikesBackViewModel
 import com.example.skyposter.SessionManager
 import com.example.skyposter.UserPostViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.webkit.MimeTypeMap
+import com.example.skyposter.BskyUtil
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +49,17 @@ fun MainScreen(
     onOpenUserPost: () -> Unit,
     onOpenLikesBack: () -> Unit,
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // 画像表示用ランチャー
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        imageUri = uri
+    }
 
     // メイン画面バックグラウンド処理
     LaunchedEffect(Unit) {
@@ -108,9 +123,9 @@ fun MainScreen(
         },
         bottomBar = {
             BottomAppBar {
-                // 左下画像添付（未実装）
+                // 左下画像添付
                 IconButton(onClick = {
-                    // TODO: ギャラリー開く処理
+                    launcher.launch("image/*")
                 }) {
                     Icon(Icons.Default.Add, contentDescription = "画像添付")
                 }
@@ -119,8 +134,28 @@ fun MainScreen(
 
                 // 右下ポストボタン
                 Button(onClick = {
-                    viewModel.post(postText)
+                    // 画像をByteArrayに変換
+                    var blob: ByteArray? = null
+                    var filename: String? = null
+                    var contentType: String? = null
+                    var aspectRatio: EmbedDefsAspectRatio? = null
+
+                    if (imageUri != null) {
+                        // blob
+                        blob = BskyUtil.uriToByteArray(context, imageUri!!)
+                        // filename
+                        filename = BskyUtil.getFileName(context, imageUri!!)
+                        // contentType
+                        contentType = context.contentResolver.getType(imageUri!!)
+                        // aspectRatio
+                        aspectRatio = BskyUtil.getAspectRatioObject(context, imageUri!!)
+                    }
+
+                    viewModel.post(postText, blob, filename, contentType, aspectRatio)
+
+                    // ポスト後は初期化
                     postText = ""
+                    imageUri = null
                 }) {
                     Text("ポスト")
                 }
@@ -148,6 +183,7 @@ fun MainScreen(
                 )
             }
 
+            // 返信ポスト確認
             if (viewModel.parentPostRecord != null) {
                 Card(
                     modifier = Modifier
@@ -171,6 +207,20 @@ fun MainScreen(
                         )
                     }
                 }
+            }
+
+            // 添付画像確認
+            imageUri?.let { uri ->
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(uri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Selected Image",
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                )
             }
         }
     }
