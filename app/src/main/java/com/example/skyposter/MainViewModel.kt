@@ -1,12 +1,19 @@
 package com.example.skyposter
 
+import NotificationViewModel
 import android.net.Uri
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.actor.ActorGetProfileRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
@@ -19,14 +26,19 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
+import java.io.IOException
+import java.net.URL
 
 data class AttachedEmbed(
     var title: String,
-    var uri: Uri,
+    var uriString: String? = null,
     var blob: ByteArray? = null,
     var contentType: String? = null,
-    var aspectRatio: EmbedDefsAspectRatio? = null,
+    var aspectRatio: EmbedDefsAspectRatio? = null
 ) {
+    val uri: Uri?
+        get() = uriString?.toUri()
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -46,11 +58,19 @@ data class AttachedEmbed(
     }
 }
 
-class MainViewModel() : ViewModel() {
+class MainViewModel(
+    userPostViewModel: UserPostViewModel,
+    notificationViewModel: NotificationViewModel,
+    likesBackViewModel: LikesBackViewModel,
+) : ViewModel() {
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
     var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
     var parentPost by mutableStateOf<FeedPost?>(null)
     private var rootPostRecord by mutableStateOf<RepoStrongRef?>(null)
+
+    private val _embed = mutableStateOf<AttachedEmbed?>(null)
+    val embed: MutableState<AttachedEmbed?> = _embed
+    private var isFetchingOgImage = false
 
     init {
         viewModelScope.launch {
@@ -63,6 +83,11 @@ class MainViewModel() : ViewModel() {
                     })
             }
             _profile.value = response.data
+
+            userPostViewModel.loadInitialItemsIfNeeded()
+            notificationViewModel.loadInitialItemsIfNeeded()
+            notificationViewModel.startPolling()
+            likesBackViewModel.loadInitialItemsIfNeeded()
         }
     }
 
@@ -74,7 +99,7 @@ class MainViewModel() : ViewModel() {
         viewModelScope.launch {
             // 画像添付準備
             var images: EmbedImages? = null
-            if (embed?.blob != null && embed.contentType != null && embed.aspectRatio != null) {
+            if (embed?.blob != null && embed.contentType != null) {
                 SessionManager.runWithAuthRetry { auth ->
                     val response = BlueskyFactory
                         .instance(BSKY_SOCIAL.uri)
@@ -140,5 +165,83 @@ class MainViewModel() : ViewModel() {
         this.parentPostRecord = null
         this.rootPostRecord = null
         this.parentPost = null
+    }
+
+    fun setEmbed(newEmbed: AttachedEmbed?) {
+        _embed.value = newEmbed
+    }
+
+    fun clearEmbed() {
+        _embed.value = null
+    }
+
+    fun fetchOgImage(url: String) {
+        if (isFetchingOgImage || _embed.value != null) return
+
+        isFetchingOgImage = true
+        viewModelScope.launch {
+            try {
+                val doc = withContext(Dispatchers.IO) {
+                    org.jsoup.Jsoup.connect(url).get()
+                }
+                val ogImageRaw = doc.select("meta[property=og:image]").attr("content")
+                val ogTitle = doc.select("meta[property=og:title]").attr("content")
+                val ogImage = URL(URL(url), ogImageRaw).toString()
+
+                val result = getByteArrayFromUrl(ogImage)
+
+                if (result != null) {
+                    val (imageData, contentType) = result
+                    val ext = extensionFromContentType(contentType)
+
+                    _embed.value = AttachedEmbed(
+                        title = "ogp.$ext",
+                        uriString = ogImage,
+                        blob = imageData,
+                        contentType = contentType,
+                        aspectRatio = null,
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isFetchingOgImage = false
+            }
+        }
+    }
+
+    private fun extensionFromContentType(contentType: String?): String {
+        if (contentType != null) {
+            return when {
+                contentType.contains("jpeg") -> "jpg"
+                contentType.contains("png") -> "png"
+                contentType.contains("webp") -> "webp"
+                contentType.contains("gif") -> "gif"
+                else -> "bin" // fallback
+            }
+        }
+        return "png"
+    }
+
+    private suspend fun getByteArrayFromUrl(url: String): Pair<ByteArray?, String?>? {
+        val client = OkHttpClient()
+        val request = Request.Builder().url(url).build()
+
+        try {
+            val response = withContext(Dispatchers.IO) {
+                client.newCall(request).execute()
+            }
+            if (response.isSuccessful) {
+                val blob = response.body?.bytes()
+                val contentType = response.body?.contentType()?.toString() ?: "image/jpeg"
+
+                return Pair(blob, contentType)
+            } else {
+                return null
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+            return null
+        }
     }
 }

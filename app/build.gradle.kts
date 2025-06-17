@@ -69,4 +69,5 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("androidx.compose.foundation:foundation:1.6.1")
+    implementation("org.jsoup:jsoup:1.17.2")
 }

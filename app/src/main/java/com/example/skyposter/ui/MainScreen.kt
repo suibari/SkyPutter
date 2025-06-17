@@ -2,6 +2,7 @@ package com.example.skyposter.ui
 
 import com.example.skyposter.MainViewModel
 import NotificationViewModel
+import android.content.Context
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,7 +33,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import com.example.skyposter.AttachedEmbed
 import com.example.skyposter.BskyUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
+import androidx.core.net.toUri
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.jsoup.Jsoup
+import java.io.IOException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,34 +58,27 @@ fun MainScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var postText by remember { mutableStateOf("") }
-    var embed by remember { mutableStateOf<AttachedEmbed?>(null) }
+
+    val urlRegex = Regex("""https?://\S+""")
 
     // 画像表示用ランチャー
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val blob = BskyUtil.uriToByteArray(context, uri)
+            val (blob, contentType, aspectRatio) = getByteArrayFromUri(context, uri)
             val filename = BskyUtil.getFileName(context, uri) ?: "image.jpg"
-            val contentType = context.contentResolver.getType(uri)
-            val aspectRatio = BskyUtil.getAspectRatioObject(context, uri)
 
-            embed = AttachedEmbed(
-                title = filename,
-                uri = uri,
-                blob = blob,
-                contentType = contentType,
-                aspectRatio = aspectRatio
+            viewModel.setEmbed(
+                AttachedEmbed(
+                    title = filename,
+                    uriString = uri.toString(),
+                    blob = blob,
+                    contentType = contentType,
+                    aspectRatio = aspectRatio
+                )
             )
         }
-    }
-
-    // メイン画面バックグラウンド処理
-    LaunchedEffect(Unit) {
-        userPostViewModel.loadInitialItemsIfNeeded()
-        notificationViewModel.loadInitialItemsIfNeeded()
-        notificationViewModel.startPolling()
-        likesBackViewModel.loadInitialItemsIfNeeded()
     }
 
     Scaffold(
@@ -145,11 +146,11 @@ fun MainScreen(
 
                 // 右下ポストボタン
                 Button(onClick = {
-                    viewModel.post(postText, embed)
+                    viewModel.post(postText, viewModel.embed.value)
 
                     // ポスト後は初期化
                     postText = ""
-                    embed = null
+                    viewModel.clearEmbed()
                 }) {
                     Text("ポスト")
                 }
@@ -167,9 +168,17 @@ fun MainScreen(
                     .padding(bottom = if (viewModel.parentPostRecord != null) 120.dp else 80.dp)
                     .fillMaxWidth()
             ) {
+
                 TextField(
                     value = postText,
-                    onValueChange = { postText = it },
+                    onValueChange = { newText ->
+                        postText = newText
+
+                        val foundUrl = urlRegex.find(newText)?.value
+                        if (foundUrl != null) {
+                            viewModel.fetchOgImage(foundUrl)
+                        }
+                    },
                     label = { Text("今なにしてる？") },
                     modifier = Modifier
                         .padding(16.dp)
@@ -204,18 +213,34 @@ fun MainScreen(
             }
 
             // 添付画像確認
-            embed?.uri?.let { uri ->
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(uri)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Selected Image",
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth()
-                )
+            viewModel.embed.value?.uri?.let { uri ->
+                Row {
+                    Text(
+                        text = viewModel.embed.value?.title ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Gray,
+                    )
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(uri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Selected Image",
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                    )
+                }
             }
         }
     }
+}
+
+fun getByteArrayFromUri(context: Context, uri: Uri): Triple<ByteArray?, String?, EmbedDefsAspectRatio?> {
+
+    val blob = BskyUtil.uriToByteArray(context, uri)
+    val contentType = context.contentResolver.getType(uri)
+    val aspectRatio = BskyUtil.getAspectRatioObject(context, uri)
+
+    return Triple(blob, contentType, aspectRatio)
 }

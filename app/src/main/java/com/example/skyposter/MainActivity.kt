@@ -27,7 +27,6 @@ class MainActivity : ComponentActivity() {
             SkyPosterTheme {
                 val context = LocalContext.current
                 val navController = rememberNavController()
-                val mainViewModel = remember { MainViewModel() }
 
                 // session management
                 val sessionViewModel: SessionViewModel = viewModel()
@@ -48,6 +47,14 @@ class MainActivity : ComponentActivity() {
                 val likesbackRepo = LikesBackRepository()
                 val factoryLikesBack = GenericViewModelFactory { LikesBackViewModel(likesbackRepo) }
                 val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
+
+                // main factory
+                val factoryMain = GenericViewModelFactory { MainViewModel(
+                    userPostViewModel = userPostViewModel,
+                    notificationViewModel = notificationViewModel,
+                    likesBackViewModel = likesBackViewModel,
+                ) }
+                val mainViewModel: MainViewModel = viewModel(factory = factoryMain)
 
                 val coroutineScope = rememberCoroutineScope()
 
