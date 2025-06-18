@@ -19,7 +19,7 @@ fun UserPostListScreen(
         refreshing.value = true
         // 強制更新ロジック
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.fetchItems(10)
+            viewModel.loadInitialItems(10)
             refreshing.value = false
         }
     }) {
