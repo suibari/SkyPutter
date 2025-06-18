@@ -208,23 +208,38 @@ fun MainScreen(
 
             // 添付画像確認
             viewModel.embed.value?.imageUri?.let { imageUri ->
-                Row {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(
                         text = viewModel.embed.value?.title ?: viewModel.embed.value?.filename ?: "",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
+                        modifier = Modifier.weight(1f)  // 削除ボタンの分を除いて幅確保
                     )
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUri)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Selected Image",
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth()
-                    )
+                    IconButton(
+                        onClick = {
+                            // 添付画像を削除する処理
+                            viewModel.clearEmbed()
+                        },
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "添付画像を削除"
+                        )
+                    }
                 }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imageUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Selected Image",
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                )
             }
         }
     }
