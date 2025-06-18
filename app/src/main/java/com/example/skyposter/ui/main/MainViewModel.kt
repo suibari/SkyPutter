@@ -52,10 +52,9 @@ class MainViewModel(
     fun initialize() {
         viewModelScope.launch {
             try {
-                val profile = withContext(Dispatchers.IO) {
-                    repo.getProfile()
-                }
-                _profile.value = profile
+                // UIに関係するものはメインでOK
+                _profile.value = repo.getProfile()
+                notificationViewModel.startPolling()
 
                 // UI側と関係の薄いロジックもできるだけIOで
                 withContext(Dispatchers.IO) {
@@ -63,10 +62,6 @@ class MainViewModel(
                     notificationViewModel.loadInitialItemsIfNeeded()
                     likesBackViewModel.loadInitialItemsIfNeeded()
                 }
-
-                // UIに関係するものはメインでOK
-                notificationViewModel.startPolling()
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -79,62 +74,17 @@ class MainViewModel(
 
     fun post(postText: String, embed: AttachedEmbed?) {
         viewModelScope.launch {
-            // 画像添付準備
-            var images: EmbedImages? = null
-            if (embed?.blob != null && embed.contentType != null) {
-                SessionManager.runWithAuthRetry { auth ->
-                    val response = BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .repo()
-                        .uploadBlob(
-                            RepoUploadBlobRequest(
-                                auth = auth,
-                                bytes = embed.blob!!,
-                                name = embed.title,
-                                contentType = embed.contentType!!
-                            )
-                        )
-
-                    val blobRef = response.data.blob
-
-                    images = EmbedImages().also { it ->
-                        it.images = listOf(EmbedImagesImage().also {
-                            it.image = blobRef
-                            it.alt = "image from SkyPoster"
-                            it.aspectRatio = embed.aspectRatio
-                        })
-                    }
+            val replyRef = parentPostRecord?.let {
+                FeedPostReplyRef().apply {
+                    root = rootPostRecord
+                    parent = parentPostRecord
                 }
             }
 
-            // ポスト処理
-            if (parentPostRecord != null) {
-                // リプライ投稿
-                val reply = FeedPostReplyRef().also {
-                    it.root = rootPostRecord
-                    it.parent = parentPostRecord
-                }
-                SessionManager.runWithAuthRetry { auth ->
-                    BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .feed()
-                        .post(FeedPostRequest(auth).also {
-                            it.text = postText
-                            it.reply = reply
-                            it.embed = images
-                        })
-                }
-            } else {
-                // 通常投稿
-                SessionManager.runWithAuthRetry { auth ->
-                    BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .feed()
-                        .post(FeedPostRequest(auth).also {
-                            it.text = postText
-                            it.embed = images
-                        })
-                }
+            try {
+                repo.postText(postText, embed, replyRef)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -165,67 +115,13 @@ class MainViewModel(
         isFetchingOgImage = true
         viewModelScope.launch {
             try {
-                val doc = withContext(Dispatchers.IO) {
-                    org.jsoup.Jsoup.connect(url).get()
-                }
-                val ogImageRaw = doc.select("meta[property=og:image]").attr("content")
-                val ogTitle = doc.select("meta[property=og:title]").attr("content")
-                val ogImage = URL(URL(url), ogImageRaw).toString()
-
-                val result = getByteArrayFromUrl(ogImage)
-
-                if (result != null) {
-                    val (imageData, contentType) = result
-                    val ext = extensionFromContentType(contentType)
-
-                    _embed.value = AttachedEmbed(
-                        title = "ogp.$ext",
-                        uriString = ogImage,
-                        blob = imageData,
-                        contentType = contentType,
-                        aspectRatio = null,
-                    )
-                }
+                val embedResult = repo.fetchOgImageEmbed(url)
+                _embed.value = embedResult
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 isFetchingOgImage = false
             }
-        }
-    }
-
-    private fun extensionFromContentType(contentType: String?): String {
-        if (contentType != null) {
-            return when {
-                contentType.contains("jpeg") -> "jpg"
-                contentType.contains("png") -> "png"
-                contentType.contains("webp") -> "webp"
-                contentType.contains("gif") -> "gif"
-                else -> "bin" // fallback
-            }
-        }
-        return "png"
-    }
-
-    private suspend fun getByteArrayFromUrl(url: String): Pair<ByteArray?, String?>? {
-        val client = OkHttpClient()
-        val request = Request.Builder().url(url).build()
-
-        try {
-            val response = withContext(Dispatchers.IO) {
-                client.newCall(request).execute()
-            }
-            if (response.isSuccessful) {
-                val blob = response.body?.bytes()
-                val contentType = response.body?.contentType()?.toString() ?: "image/jpeg"
-
-                return Pair(blob, contentType)
-            } else {
-                return null
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-            return null
         }
     }
 }

@@ -65,8 +65,8 @@ fun MainScreen(
 
             viewModel.setEmbed(
                 AttachedEmbed(
-                    title = filename,
-                    uriString = uri.toString(),
+                    filename = filename,
+                    imageUriString = uri.toString(),
                     blob = blob,
                     contentType = contentType,
                     aspectRatio = aspectRatio
@@ -207,16 +207,16 @@ fun MainScreen(
             }
 
             // 添付画像確認
-            viewModel.embed.value?.uri?.let { uri ->
+            viewModel.embed.value?.imageUri?.let { imageUri ->
                 Row {
                     Text(
-                        text = viewModel.embed.value?.title ?: "",
+                        text = viewModel.embed.value?.title ?: viewModel.embed.value?.filename ?: "",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
                     )
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(uri)
+                            .data(imageUri)
                             .crossfade(true)
                             .build(),
                         contentDescription = "Selected Image",
