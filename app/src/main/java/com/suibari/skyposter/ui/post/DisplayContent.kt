@@ -32,7 +32,7 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
+import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -166,15 +166,15 @@ fun DisplayActions(
     rootRef: RepoStrongRef,
     feed: FeedPost?,
     onReply: ((RepoStrongRef, RepoStrongRef, FeedPost) -> Unit)?,
-    onLike: ((RepoStrongRef) -> Unit)?,
-    onRepost: ((RepoStrongRef) -> Unit)?
+    onLike: ((ref: RefWithLikedOrReposted) -> Unit)?,
+    onRepost: ((ref: RefWithLikedOrReposted) -> Unit)?
 ) {
     if (!isMyPost) {
         val likeColor = if (isLiked) Color.Red else Color.Black
         val repostColor = if (isReposted) Color.Green else Color.Black
 
         Row(modifier = Modifier.padding(top = 8.dp)) {
-            if (feed != null) {
+            if (feed?.asFeedPost != null) {
                 Icon(
                     Icons.Default.Share,
                     contentDescription = "リプライ",
@@ -185,24 +185,36 @@ fun DisplayActions(
                         }
                 )
             }
-            Icon(
-                Icons.Default.FavoriteBorder,
-                contentDescription = "いいね",
-                tint = likeColor,
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .clickable {
-                        onLike?.invoke(subjectRef)
+            if (feed != null) {
+                Icon(
+                    Icons.Default.FavoriteBorder,
+                    contentDescription = "いいね",
+                    tint = likeColor,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .clickable {
+                            onLike?.invoke(
+                                RefWithLikedOrReposted(
+                                    ref = subjectRef,
+                                    isExec = isLiked,
+                                )
+                            )
+                        }
+                )
+                Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = "リポスト",
+                    tint = repostColor,
+                    modifier = Modifier.clickable {
+                        onRepost?.invoke(
+                            RefWithLikedOrReposted(
+                                ref = subjectRef,
+                                isExec = isReposted,
+                            )
+                        )
                     }
-            )
-            Icon(
-                Icons.Default.Refresh,
-                contentDescription = "リポスト",
-                tint = repostColor,
-                modifier = Modifier.clickable {
-                    onRepost?.invoke(subjectRef)
-                }
-            )
+                )
+            }
         }
     }
 }

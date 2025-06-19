@@ -8,8 +8,14 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.api.entity.share.RKeyRequest
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
+
+data class RefWithLikedOrReposted (
+    val ref: RepoStrongRef,
+    val isExec: Boolean,
+)
 
 @Composable
 fun LikesBackScreen(
@@ -29,14 +35,20 @@ fun LikesBackScreen(
         )
         onNavigateToMain()
     }
-    val onLike: (RepoStrongRef) -> Unit = { record ->
+    val onLike: (RefWithLikedOrReposted) -> Unit = {
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.likePost(record)
+            viewModel.toggleLike(
+                ref = it.ref,
+                isLiked = it.isExec,
+            )
         }
     }
-    val onRepost: (RepoStrongRef) -> Unit = { record ->
+    val onRepost: (RefWithLikedOrReposted) -> Unit = {
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.repostPost(record)
+            viewModel.toggleRepost(
+                ref = it.ref,
+                isReposted = it.isExec,
+            )
         }
     }
 

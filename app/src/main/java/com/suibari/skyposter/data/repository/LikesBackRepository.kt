@@ -1,6 +1,7 @@
 package com.suibari.skyposter.data.repository
 
 import android.util.Log
+import com.suibari.skyposter.ui.post.DisplayFeed
 import com.suibari.skyposter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
@@ -12,13 +13,7 @@ import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-data class DisplayFeed(
-    val raw: FeedDefsFeedViewPost,
-    val isLiked: Boolean? = false,
-    val isReposted: Boolean? = false,
-)
-
-class LikesBackRepository () {
+class LikesBackRepository: BskyPostActionRepository () {
     suspend fun fetchLikesBack (limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
         return try {
             val response = SessionManager.runWithAuthRetry { auth ->
@@ -46,15 +41,16 @@ class LikesBackRepository () {
                         it.uris = uris
                     })
             }
-            val viewerStatusMap = responsePosts.data.posts.associateBy { it.uri }
+            val viewerStatusMap = fetchViewerStatusMap(uris)
 
-            // DisplayFeed に変換
             val displayFeeds = feeds.map { feed ->
-                val viewer = viewerStatusMap[feed.post.uri]?.viewer
+                val viewer = viewerStatusMap[feed.post.uri]
                 DisplayFeed(
                     raw = feed,
                     isLiked = viewer?.like != null,
-                    isReposted = viewer?.repost != null
+                    isReposted = viewer?.repost != null,
+                    likeUri = viewer?.like,
+                    repostUri = viewer?.repost,
                 )
             }
 
@@ -62,24 +58,6 @@ class LikesBackRepository () {
         } catch (e: ATProtocolException) {
             Log.e("LikesBackRepository", "fetch error", e)
             Pair(emptyList(), null)
-        }
-    }
-
-    suspend fun likePost(record: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
-            BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .like(FeedLikeRequest(auth).also { it.subject = record })
-        }
-    }
-
-    suspend fun repostPost(record: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
-            BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .repost(FeedRepostRequest(auth).also { it.subject = record })
         }
     }
 }

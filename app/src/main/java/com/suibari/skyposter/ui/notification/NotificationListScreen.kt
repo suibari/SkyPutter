@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.runtime.LaunchedEffect
+import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -32,14 +33,20 @@ fun NotificationListScreen(
         )
         onNavigateToMain()
     }
-    val onLike: (RepoStrongRef) -> Unit = { record ->
+    val onLike: (RefWithLikedOrReposted) -> Unit = {
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.likePost(record)
+            viewModel.toggleLike(
+                ref = it.ref,
+                isLiked = it.isExec,
+            )
         }
     }
-    val onRepost: (RepoStrongRef) -> Unit = { record ->
+    val onRepost: (RefWithLikedOrReposted) -> Unit = {
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.repostPost(record)
+            viewModel.toggleRepost(
+                ref = it.ref,
+                isReposted = it.isExec,
+            )
         }
     }
 

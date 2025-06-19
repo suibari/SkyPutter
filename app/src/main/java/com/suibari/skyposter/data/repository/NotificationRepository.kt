@@ -7,6 +7,7 @@ import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNotificationsRequest
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import androidx.core.content.edit
+import com.suibari.skyposter.ui.notification.DisplayNotification
 import com.suibari.skyposter.util.BskyUtil
 import com.suibari.skyposter.util.SessionManager
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
@@ -17,20 +18,9 @@ import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-data class DisplayNotification(
-    val raw: NotificationListNotificationsNotification,
-    val isNew: Boolean,
-    val parentPost: FeedPost? = null,
-    val parentPostRecord: RepoStrongRef? = null,
-    val rootPostRecord: RepoStrongRef? = null,
-    val isLiked: Boolean = false,
-    val isReposted: Boolean = false,
-)
-
-// シングルトン化はcontextを引数で受け取れないのでできない
 class NotificationRepository (
     val context: Context
-) {
+): BskyPostActionRepository() {
     private val prefs: SharedPreferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
     private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null) // 見た通知の最新時刻
     private var latestNotifIndexedAt: String? = null // 来た通知の最新時刻
@@ -58,6 +48,12 @@ class NotificationRepository (
         val notifs = response.data.notifications
         val newCursor = response.data.cursor
 
+        // --- 1. reply 通知のみ URI 抽出してまとめて取得 ---
+        val replyNotifs = notifs.filter { it.reason == "reply" }
+        val replyUris = replyNotifs.mapNotNull { it.uri }
+        val viewerStatusMap = fetchViewerStatusMap(replyUris)  // BskyPostActionRepository の共通関数
+
+        // --- 2. DisplayNotification にマッピング ---
         val result = notifs.map { notif ->
             val isNew = lastSeenNotifIndexedAt?.let { notif.indexedAt > it } ?: true
             val parentPostRecord = notif.record.asFeedPost?.reply?.parent
@@ -65,22 +61,10 @@ class NotificationRepository (
                 ?: notif.record.asFeedLike?.subject
             val rootPostRecord = notif.record.asFeedPost?.reply?.root
             val parentPost: FeedPost? = getRecord(parentPostRecord)
-            var isLiked: Boolean = false
-            var isReposted: Boolean = false
 
-            if (notif.reason == "reply") {
-                val uri: List<String> = listOf(notif.uri)
-                val response = SessionManager.runWithAuthRetry { auth ->
-                    BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .feed()
-                        .getPosts(FeedGetPostsRequest(auth).also {
-                            it.uris = uri
-                        })
-                }
-                isLiked = response.data.posts[0].viewer?.like != null
-                isReposted = response.data.posts[0].viewer?.repost != null
-            }
+            val viewer = viewerStatusMap[notif.uri]
+            val isLiked = viewer?.like != null
+            val isReposted = viewer?.repost != null
 
             DisplayNotification(
                 raw = notif,
@@ -90,6 +74,8 @@ class NotificationRepository (
                 rootPostRecord = rootPostRecord,
                 isLiked = isLiked,
                 isReposted = isReposted,
+                likeUri = viewer?.like,
+                repostUri = viewer?.repost,
             )
         }
 
@@ -129,24 +115,6 @@ class NotificationRepository (
         } catch (e: Exception) {
             Log.w("getRecord", "Record not found", e)
             return null
-        }
-    }
-
-    suspend fun likePost(record: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
-            BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .like(FeedLikeRequest(auth).also { it.subject = record })
-        }
-    }
-
-    suspend fun repostPost(record: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
-            BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .feed()
-                .repost(FeedRepostRequest(auth).also { it.subject = record })
         }
     }
 }

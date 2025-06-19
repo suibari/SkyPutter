@@ -6,18 +6,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.suibari.skyposter.data.repository.DisplayFeed
+import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
-import java.sql.Blob
 
 @Composable
 fun PostItem(
     feed: DisplayFeed,
     myDid: String,
     onReply: ((parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit)?,
-    onLike: ((parentRecord: RepoStrongRef) -> Unit)?,
-    onRepost: ((parentRecord: RepoStrongRef) -> Unit)?,
+    onLike: ((ref: RefWithLikedOrReposted) -> Unit)?,
+    onRepost: ((ref: RefWithLikedOrReposted) -> Unit)?,
 ) {
     val record = feed.raw.post.record?.asFeedPost!!
     val isMyPost = feed.raw.post.author?.did == myDid

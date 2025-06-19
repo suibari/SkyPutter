@@ -1,14 +1,12 @@
 package com.suibari.skyposter.ui.notification
 
-import com.suibari.skyposter.data.repository.DisplayNotification
 import com.suibari.skyposter.data.repository.NotificationRepository
 import com.suibari.skyposter.data.model.PaginatedListViewModel
 import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationPoller
-import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 class NotificationViewModel(
-    private val repo: NotificationRepository,
+    override val repo: NotificationRepository,
     private val notifier: DeviceNotifier
 ) : PaginatedListViewModel<DisplayNotification>() {
 
@@ -35,16 +33,6 @@ class NotificationViewModel(
         _items.clear()
         _items.addAll(newNotifs)
         cursor = newCursor
-    }
-
-    suspend fun likePost(record: RepoStrongRef) {
-        repo.likePost(record)
-        updatePostState(record.uri) { it.copy(isLiked = !(it.isLiked ?: false)) }
-    }
-
-    suspend fun repostPost(record: RepoStrongRef) {
-        repo.repostPost(record)
-        updatePostState(record.uri) { it.copy(isReposted = !(it.isReposted ?: false)) }
     }
 
     private fun updatePostState(uri: String, transform: (DisplayNotification) -> DisplayNotification) {

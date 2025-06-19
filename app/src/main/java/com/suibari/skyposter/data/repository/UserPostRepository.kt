@@ -1,13 +1,14 @@
 package com.suibari.skyposter.data.repository
 
 import android.util.Log
+import com.suibari.skyposter.ui.post.DisplayFeed
 import com.suibari.skyposter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
-class UserPostRepository () {
+class UserPostRepository: BskyPostActionRepository () {
     suspend fun fetchUserPosts (limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
         return try {
             val did = SessionManager.getSession().did
@@ -28,7 +29,9 @@ class UserPostRepository () {
             val newCursor = response.data.cursor
 
             val result = feeds.map { feed ->
-                DisplayFeed(raw = feed)
+                DisplayFeed(
+                    raw = feed,
+                )
             }
 
             Pair(result, newCursor)

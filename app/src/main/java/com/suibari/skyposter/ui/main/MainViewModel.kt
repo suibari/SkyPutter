@@ -63,7 +63,6 @@ class MainViewModel(
         }
     }
 
-
     fun getProfile(): ActorDefsProfileViewDetailed? {
         return _profile.value
     }
