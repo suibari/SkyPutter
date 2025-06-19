@@ -27,7 +27,13 @@ fun PostItem(
         RepoStrongRef(it.uri!!, it.cid!!)
     } ?: subjectRef
 
-    val images = feed.raw.post.embed?.asImages?.images
+    val images: List<DisplayImage>? = feed.raw.post.embed?.asImages?.images?.map {
+        DisplayImage(
+            urlThumb = it.thumb!!,
+            urlFullsize = it.fullsize!!,
+            alt = it.alt,
+        )
+    }
 
     Row (modifier = Modifier.padding(start = 8.dp)) {
         // ヘッダー

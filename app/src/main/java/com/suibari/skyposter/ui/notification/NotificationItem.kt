@@ -26,7 +26,9 @@ import com.suibari.skyposter.data.repository.DisplayNotification
 import com.suibari.skyposter.ui.post.DisplayActions
 import com.suibari.skyposter.ui.post.DisplayContent
 import com.suibari.skyposter.ui.post.DisplayHeader
+import com.suibari.skyposter.ui.post.DisplayImage
 import com.suibari.skyposter.ui.post.DisplayParentPost
+import com.suibari.skyposter.util.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -140,7 +142,6 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 //    }
 //}
 
-
 @Composable
 fun NotificationItem(
     notification: DisplayNotification,
@@ -153,7 +154,17 @@ fun NotificationItem(
     val subjectRef = RepoStrongRef(notification.raw.uri, notification.raw.cid)
     val rootRef = notification.rootPostRecord ?: subjectRef
 
-    val images = notification.raw.record.asFeedPost?.embed?.asImages?.images
+    val images: List<DisplayImage>? = notification.raw.record.asFeedPost?.embed?.asImages?.images?.map {
+        val did = notification.raw.author.did
+        val cid = it.image?.ref?.link!!
+        val thumb = BskyUtil.buildCdnImageUrl(did, cid, "feed_thumbnail")
+        val fullsize = BskyUtil.buildCdnImageUrl(did, cid, "feed_fullsize")
+        DisplayImage(
+            urlThumb = thumb,
+            urlFullsize = fullsize,
+            alt = it.alt,
+        )
+    }
 
     Row (modifier = Modifier.padding(start = 8.dp)) {
         // 自分ポスト欄
@@ -167,7 +178,7 @@ fun NotificationItem(
             DisplayContent(
                 text = record.asFeedPost?.text,
                 authorName = notification.raw.author.displayName,
-                images = null,
+                images = images,
                 date = notification.raw.indexedAt
             )
 

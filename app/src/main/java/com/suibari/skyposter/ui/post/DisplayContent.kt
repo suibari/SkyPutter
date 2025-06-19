@@ -36,6 +36,12 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesViewImage
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
+data class DisplayImage (
+    val urlThumb: String,
+    val urlFullsize: String,
+    val alt: String?,
+)
+
 @Composable
 fun DisplayHeader(
     avatarUrl: String?,
@@ -72,7 +78,7 @@ fun DisplayHeader(
 }
 
 @Composable
-fun DisplayContent(text: String?, authorName: String?, images: List<EmbedImagesViewImage>?, date: String?) {
+fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage>?, date: String?) {
     val selectedImage = remember { mutableStateOf<String?>(null) }
 
     if (!authorName.isNullOrBlank()) {
@@ -82,7 +88,7 @@ fun DisplayContent(text: String?, authorName: String?, images: List<EmbedImagesV
         Text(text = text, style = MaterialTheme.typography.bodyMedium)
     }
 
-    if (images.isNullOrEmpty()) {
+    if (!images.isNullOrEmpty()) {
         DisplayImages(images) { selectedImage.value = it }
         selectedImage.value?.let { imageUrl ->
             ZoomableImageDialog(
@@ -99,19 +105,19 @@ fun DisplayContent(text: String?, authorName: String?, images: List<EmbedImagesV
 
 @Composable
 fun DisplayImages(
-    images: List<EmbedImagesViewImage>?,
+    images: List<DisplayImage>?,
     onImageClick: (String?) -> Unit
 ) {
     if (!images.isNullOrEmpty()) {
         Row {
             images.forEach { image ->
                 AsyncImage(
-                    model = image.thumb,
+                    model = image.urlThumb,
                     contentDescription = image.alt,
                     modifier = Modifier
                         .size(100.dp)
                         .padding(end = 4.dp)
-                        .clickable { onImageClick(image.fullsize) }
+                        .clickable { onImageClick(image.urlFullsize) }
                 )
             }
         }
