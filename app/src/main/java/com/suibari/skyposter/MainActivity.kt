@@ -29,6 +29,7 @@ import com.suibari.skyposter.ui.post.UserPostListScreen
 import com.suibari.skyposter.ui.post.UserPostViewModel
 import com.suibari.skyposter.ui.theme.SkyPosterTheme
 import com.suibari.skyposter.util.SessionManager
+import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationWorker
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -49,8 +50,12 @@ class MainActivity : ComponentActivity() {
                 val myDid = sessionViewModel.myDid
 
                 // notification factory
+                val deviceNotifier = DeviceNotifier(context)
                 val notificationRepo = NotificationRepository(context)
-                val factoryNotification = GenericViewModelFactory { NotificationViewModel(notificationRepo) }
+                val factoryNotification = GenericViewModelFactory { NotificationViewModel(
+                    repo = notificationRepo,
+                    notifier = deviceNotifier
+                )}
                 val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
 
                 // profile factory

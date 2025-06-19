@@ -8,13 +8,13 @@ import com.suibari.skyposter.data.repository.NotificationRepository
 
 class NotificationWorker(
     private val appContext: Context,
-    workerParams: WorkerParameters
+    private val repo: NotificationRepository,
+    workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
         Log.i("NotificationWorker", "doWork() called: polling notifications")
-        val repository = NotificationRepository(appContext)
 
-        repository.fetchNotifications(50)
+        repo.fetchNotifications(50)
 
         return Result.success()
     }
