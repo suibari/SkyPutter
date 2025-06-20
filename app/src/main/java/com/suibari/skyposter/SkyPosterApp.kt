@@ -6,7 +6,6 @@ import com.suibari.skyposter.util.SessionManager
 class SkyPosterApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        SessionManager.initialize(this)
-        scheduleNotificationWorker(this)
+//        scheduleNotificationWorker(this)
     }
 }

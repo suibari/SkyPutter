@@ -27,6 +27,7 @@ data class DisplayNotification(
     val isReposted: Boolean = false,
 )
 
+// シングルトン化はcontextを引数で受け取れないのでできない
 class NotificationRepository (
     val context: Context
 ) {

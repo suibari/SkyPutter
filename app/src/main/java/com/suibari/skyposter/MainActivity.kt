@@ -3,19 +3,21 @@ package com.suibari.skyposter
 import com.suibari.skyposter.ui.notification.NotificationViewModel
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.suibari.skyposter.data.model.GenericViewModelFactory
-import com.suibari.skyposter.data.model.SessionViewModel
 import com.suibari.skyposter.data.repository.LikesBackRepository
 import com.suibari.skyposter.data.repository.MainRepository
+import com.suibari.skyposter.data.repository.NotificationRepoProvider
 import com.suibari.skyposter.data.repository.NotificationRepository
 import com.suibari.skyposter.data.repository.UserPostRepository
 import com.suibari.skyposter.ui.likesback.LikesBackScreen
@@ -37,122 +39,115 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val app = application as SkyPosterApp
 
-        setContent {
-            SkyPosterTheme {
-                val context = LocalContext.current
-                val navController = rememberNavController()
+        // Session初期化
+        SessionManager.initialize(applicationContext)
 
-                // session management
-                val sessionViewModel: SessionViewModel = viewModel()
-                val hasSession = sessionViewModel.hasSession
-                val myDid = sessionViewModel.myDid
+        // シングルトンSession をここで取得して Compose に渡す
+        lifecycleScope.launch {
+            val session = SessionManager.getSession()
 
-                // notification factory
-                val deviceNotifier = DeviceNotifier(context)
-                val notificationRepo = NotificationRepository(context)
-                val factoryNotification = GenericViewModelFactory { NotificationViewModel(
-                    repo = notificationRepo,
-                    notifier = deviceNotifier
-                )}
-                val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
+            val hasSession = session.accessJwt != null && session.refreshJwt != null && session.did != null
+            val myDid = session.did
 
-                // profile factory
-                val userPostRepo = UserPostRepository()
-                val factoryUserPost = GenericViewModelFactory { UserPostViewModel(userPostRepo) }
-                val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
+            setContent {
+                SkyPosterTheme {
+                    val navController = rememberNavController()
+                    val context = LocalContext.current
 
-                // likesback factory
-                val likesbackRepo = LikesBackRepository()
-                val factoryLikesBack = GenericViewModelFactory { LikesBackViewModel(likesbackRepo) }
-                val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
+                    // notification factory
+                    val deviceNotifier = DeviceNotifier(context)
+                    val notificationRepo = NotificationRepoProvider.getInstance(context)
+                    val factoryNotification = GenericViewModelFactory { NotificationViewModel(
+                        repo = notificationRepo,
+                        notifier = deviceNotifier
+                    )}
+                    val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
 
-                // main factory
-                val mainRepo = MainRepository()
-                val factoryMain = GenericViewModelFactory { MainViewModel(
-                    repo = mainRepo,
-                    userPostViewModel = userPostViewModel,
-                    notificationViewModel = notificationViewModel,
-                    likesBackViewModel = likesBackViewModel,
-                ) }
-                val mainViewModel: MainViewModel = viewModel(factory = factoryMain)
+                    // profile factory
+                    val userPostRepo = UserPostRepository()
+                    val factoryUserPost = GenericViewModelFactory { UserPostViewModel(userPostRepo) }
+                    val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
 
-                val coroutineScope = rememberCoroutineScope()
+                    // likesback factory
+                    val likesbackRepo = LikesBackRepository()
+                    val factoryLikesBack = GenericViewModelFactory { LikesBackViewModel(likesbackRepo) }
+                    val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
 
-                NavHost(
-                    navController = navController,
-                    startDestination = when (hasSession) {
-                        null -> Screen.Loading.route
-                        true -> Screen.Main.route
-                        false -> Screen.Login.route
-                    }
-                ) {
-                    composable(Screen.Loading.route) {
-                        LoadingScreen()
-                    }
-                    composable(Screen.Login.route) {
-                        LoginScreen(
-                            application = app,
-                            onLoginSuccess = {
-                                coroutineScope.launch {
-                                    notificationViewModel.loadInitialItems()
-                                }
-                                navController.navigate(Screen.Main.route) {
-                                    popUpTo(Screen.Login.route) { inclusive = true }
-                                }
-                            }
-                        )
-                    }
-                    composable(Screen.Main.route) {
-                        if (myDid != null) {
-                            MainScreen(
-                                application = app,
-                                viewModel = mainViewModel,
-                                onLogout = {
-                                    coroutineScope.launch {
-                                        SessionManager.clearSession()
-                                        navController.navigate(Screen.Login.route) {
-                                            popUpTo(Screen.Main.route) { inclusive = true }
-                                        }
+                    // main factory
+                    val mainRepo = MainRepository()
+                    val factoryMain = GenericViewModelFactory { MainViewModel(
+                        repo = mainRepo,
+                        userPostViewModel = userPostViewModel,
+                        notificationViewModel = notificationViewModel,
+                        likesBackViewModel = likesBackViewModel,
+                    ) }
+                    val mainViewModel: MainViewModel = viewModel(factory = factoryMain)
+
+                    val coroutineScope = rememberCoroutineScope()
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = if (hasSession) Screen.Main.route else Screen.Login.route
+                    ) {
+                        composable(Screen.Login.route) {
+                            LoginScreen(
+                                application = application as SkyPosterApp,
+                                onLoginSuccess = {
+                                    // バックグラウンド通知はログイン時に1度だけ実行すればいい
+                                    scheduleNotificationWorker(context)
+
+                                    // メイン画面に遷移
+                                    navController.navigate(Screen.Main.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
                                     }
-                                },
-                                onOpenNotification = {
-                                    navController.navigate(Screen.NotificationList.route)
-                                },
-                                onOpenUserPost = {
-                                    navController.navigate(Screen.UserPost.route)
-                                },
-                                onOpenLikesBack = {
-                                    navController.navigate(Screen.LikesBack.route)
-                                },
+                                }
                             )
                         }
-                    }
-                    composable(Screen.NotificationList.route) {
-                        NotificationListScreen(
-                            viewModel = notificationViewModel,
-                            mainViewModel = mainViewModel,
-                            onNavigateToMain = {
-                                navController.navigate("main")
+                        composable(Screen.Main.route) {
+                            if (myDid != null) {
+                                MainScreen(
+                                    application = application as SkyPosterApp,
+                                    viewModel = mainViewModel,
+                                    onLogout = {
+                                        lifecycleScope.launch {
+                                            SessionManager.clearSession()
+                                            navController.navigate(Screen.Login.route) {
+                                                popUpTo(Screen.Main.route) { inclusive = true }
+                                            }
+                                        }
+                                    },
+                                    onOpenNotification = { navController.navigate(Screen.NotificationList.route) },
+                                    onOpenUserPost = { navController.navigate(Screen.UserPost.route) },
+                                    onOpenLikesBack = { navController.navigate(Screen.LikesBack.route) },
+                                )
                             }
-                        )
-                    }
-                    composable(Screen.UserPost.route) {
-                        UserPostListScreen(
-                            viewModel = userPostViewModel,
-                            myDid = myDid!!,
-                        )
-                    }
-                    composable(Screen.LikesBack.route) {
-                        LikesBackScreen(
-                            viewModel = likesBackViewModel,
-                            mainViewModel = mainViewModel,
-                            myDid = myDid!!,
-                            onNavigateToMain = {
-                                navController.navigate("main")
-                            }
-                        )
+                        }
+                        composable(Screen.NotificationList.route) {
+                            NotificationListScreen(
+                                viewModel = notificationViewModel,
+                                mainViewModel = mainViewModel,
+                                onNavigateToMain = {
+                                    navController.navigate("main")
+                                }
+                            )
+                        }
+                        composable(Screen.UserPost.route) {
+                            UserPostListScreen(
+                                viewModel = userPostViewModel,
+                                myDid = myDid!!,
+                            )
+                        }
+                        composable(Screen.LikesBack.route) {
+                            LikesBackScreen(
+                                viewModel = likesBackViewModel,
+                                mainViewModel = mainViewModel,
+                                myDid = myDid!!,
+                                onNavigateToMain = {
+                                    navController.navigate("main")
+                                }
+                            )
+                        }
                     }
                 }
             }
