@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.skyposter"
+    namespace = "com.suibari.skyposter"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.skyposter"
+        applicationId = "com.suibari.skyposter"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

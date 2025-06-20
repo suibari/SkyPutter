@@ -6,7 +6,7 @@ import com.suibari.skyposter.data.repository.DisplayNotification
 import android.app.NotificationChannel
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.skyposter.R
+import com.suibari.skyposter.R
 
 class DeviceNotifier(private val context: Context) {
     private val channelId = "sky_notif_channel"
