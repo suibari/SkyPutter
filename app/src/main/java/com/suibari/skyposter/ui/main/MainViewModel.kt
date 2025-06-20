@@ -1,5 +1,6 @@
 package com.suibari.skyposter.ui.main
 
+import android.util.Log
 import com.suibari.skyposter.ui.notification.NotificationViewModel
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -33,25 +34,35 @@ class MainViewModel(
     val embed: MutableState<AttachedEmbed?> = _embed
     private var isFetchingOgImage = false
 
+    var isInitialized by mutableStateOf(false)
+        private set
 
     fun initialize() {
         viewModelScope.launch {
             try {
-                // UIに関係するものはメインでOK
+                Log.d("MainViewModel", "initialize: start")
+
                 _profile.value = repo.getProfile()
+                Log.d("MainViewModel", "profile loaded")
+
                 notificationViewModel.startPolling()
 
-                // UI側と関係の薄いロジックもできるだけIOで
                 withContext(Dispatchers.IO) {
+                    Log.d("MainViewModel", "loading child view models")
                     userPostViewModel.loadInitialItemsIfNeeded()
                     notificationViewModel.loadInitialItemsIfNeeded()
                     likesBackViewModel.loadInitialItemsIfNeeded()
                 }
+
+                Log.d("MainViewModel", "initialization finished")
+                isInitialized = true
+
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("MainViewModel", "initialize error", e)
             }
         }
     }
+
 
     fun getProfile(): ActorDefsProfileViewDetailed? {
         return _profile.value

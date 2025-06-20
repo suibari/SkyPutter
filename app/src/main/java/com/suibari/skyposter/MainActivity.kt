@@ -33,6 +33,7 @@ import com.suibari.skyposter.ui.theme.SkyPosterTheme
 import com.suibari.skyposter.util.SessionManager
 import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationWorker
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -98,30 +99,39 @@ class MainActivity : ComponentActivity() {
                                     scheduleNotificationWorker(context)
 
                                     // メイン画面に遷移
-                                    navController.navigate(Screen.Main.route) {
+                                    navController.navigate(Screen.Loading.route) {
                                         popUpTo(Screen.Login.route) { inclusive = true }
                                     }
                                 }
                             )
                         }
-                        composable(Screen.Main.route) {
-                            if (myDid != null) {
-                                MainScreen(
-                                    application = application as SkyPosterApp,
-                                    viewModel = mainViewModel,
-                                    onLogout = {
-                                        lifecycleScope.launch {
-                                            SessionManager.clearSession()
-                                            navController.navigate(Screen.Login.route) {
-                                                popUpTo(Screen.Main.route) { inclusive = true }
-                                            }
-                                        }
-                                    },
-                                    onOpenNotification = { navController.navigate(Screen.NotificationList.route) },
-                                    onOpenUserPost = { navController.navigate(Screen.UserPost.route) },
-                                    onOpenLikesBack = { navController.navigate(Screen.LikesBack.route) },
-                                )
+                        composable(Screen.Loading.route) {
+                            LoadingScreen()
+
+                            LaunchedEffect(Unit) {
+                                // 少し待機（MainViewModelが準備完了する時間を確保）
+                                delay(300) // もしくは必要に応じて500ms程度
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(Screen.Loading.route) { inclusive = true }
+                                }
                             }
+                        }
+                        composable(Screen.Main.route) {
+                            MainScreen(
+                                application = application as SkyPosterApp,
+                                viewModel = mainViewModel,
+                                onLogout = {
+                                    lifecycleScope.launch {
+                                        SessionManager.clearSession()
+                                        navController.navigate(Screen.Login.route) {
+                                            popUpTo(Screen.Main.route) { inclusive = true }
+                                        }
+                                    }
+                                },
+                                onOpenNotification = { navController.navigate(Screen.NotificationList.route) },
+                                onOpenUserPost = { navController.navigate(Screen.UserPost.route) },
+                                onOpenLikesBack = { navController.navigate(Screen.LikesBack.route) }
+                            )
                         }
                         composable(Screen.NotificationList.route) {
                             NotificationListScreen(

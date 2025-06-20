@@ -26,7 +26,9 @@ import com.suibari.skyposter.util.SessionManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
+import com.suibari.skyposter.ui.loading.LoadingScreen
 import com.suibari.skyposter.util.Util
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
