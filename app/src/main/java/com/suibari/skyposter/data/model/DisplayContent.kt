@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
@@ -65,10 +66,31 @@ fun DisplayHeader(
 
         if (reason != null) {
             when (reason) {
-                "reply" -> Icon(Icons.Default.Share, contentDescription = "リプライ")
-                "repost" -> Icon(Icons.Default.Refresh, contentDescription = "リポスト")
-                "like" -> Icon(Icons.Default.FavoriteBorder, contentDescription = "リポスト")
-                "unknown" -> Icon(Icons.Default.Notifications, contentDescription = "不明")
+                "reply" -> Icon(
+                    Icons.Default.Share,
+                    contentDescription = "リプライ",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+                "repost" -> Icon(
+                    Icons.Default.Refresh,
+                    contentDescription = "リポスト",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+                "like" -> Icon(
+                    Icons.Default.FavoriteBorder,
+                    contentDescription = "リポスト",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+                "follow" -> Icon(
+                    Icons.Default.Face,
+                    contentDescription = "フォロー",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
+                "unknown" -> Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = "不明",
+                    tint = MaterialTheme.colorScheme.onBackground,
+                )
             }
         }
 
@@ -87,10 +109,18 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
     val selectedImage = remember { mutableStateOf<String?>(null) }
 
     if (!authorName.isNullOrBlank()) {
-        Text(text = authorName, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Text(
+            text = authorName,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
     }
     if (!text.isNullOrBlank()) {
-        Text(text = text, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
     }
 
     if (!images.isNullOrEmpty()) {
@@ -104,7 +134,11 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
     }
 
     if (!date.isNullOrBlank()) {
-        Text(text = date, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        Text(
+            text = date,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline,
+        )
     }
 }
 
@@ -175,14 +209,15 @@ fun DisplayActions(
     onRepost: ((RepoStrongRef) -> Unit)?
 ) {
     if (!isMyPost) {
-        val likeColor = if (isLiked) Color.Red else Color.Black
-        val repostColor = if (isReposted) Color.Green else Color.Black
+        val likeColor = if (isLiked) Color.Red else MaterialTheme.colorScheme.onBackground
+        val repostColor = if (isReposted) Color.Green else MaterialTheme.colorScheme.onBackground
 
         Row(modifier = Modifier.padding(top = 8.dp)) {
             if (feed?.asFeedPost != null) {
                 Icon(
                     Icons.Default.Share,
                     contentDescription = "リプライ",
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .clickable {
@@ -230,7 +265,7 @@ fun DisplayParentPost(text: String?) {
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                color = MaterialTheme.colorScheme.outline,
             )
         }
     }
