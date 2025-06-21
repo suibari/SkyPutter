@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.runtime.LaunchedEffect
-import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
+import androidx.compose.runtime.rememberCoroutineScope
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -24,45 +24,51 @@ fun NotificationListScreen(
 ) {
     val notifications = viewModel.items
     val refreshing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
-        mainViewModel.setReplyContext(
-            parentRef = parentRef,
-            rootRef = rootRef,
-            parentPost = parentPost
-        )
+        mainViewModel.setReplyContext(parentRef, rootRef, parentPost)
         onNavigateToMain()
     }
-    val onLike: (RefWithLikedOrReposted) -> Unit = {
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.toggleLike(
-                ref = it.ref,
-                isLiked = it.isExec,
-            )
-        }
-    }
-    val onRepost: (RefWithLikedOrReposted) -> Unit = {
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.toggleRepost(
-                ref = it.ref,
-                isReposted = it.isExec,
-            )
+
+    val onLike: (RepoStrongRef) -> Unit = { ref ->
+        coroutineScope.launch {
+            viewModel.toggleLike(ref)
         }
     }
 
-    SwipeRefresh(state = rememberSwipeRefreshState(refreshing.value), onRefresh = {
-        refreshing.value = true
-        // 強制更新ロジック
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.fetchNow()
-            refreshing.value = false
+    val onRepost: (RepoStrongRef) -> Unit = { ref ->
+        coroutineScope.launch {
+            viewModel.toggleRepost(ref)
         }
-    }) {
+    }
+
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(refreshing.value),
+        onRefresh = {
+            coroutineScope.launch {
+                refreshing.value = true
+                viewModel.fetchNow()
+                refreshing.value = false
+            }
+        }
+    ) {
         LazyColumn {
             itemsIndexed(notifications) { index, notif ->
-                NotificationItem(notif, onReply, onLike, onRepost)
+                val viewer = viewModel.viewerStatus[notif.uri]
+                val isLiked = viewer?.like != null
+                val isReposted = viewer?.repost != null
 
-                // 最後のアイテムが表示されたときに追加読み込み
+                NotificationItem(
+                    notification = notif,
+                    isLiked = isLiked,
+                    isReposted = isReposted,
+                    onReply = onReply,
+                    onLike = onLike,
+                    onRepost = onRepost
+                )
+
+                // 最後のアイテムが表示されたら追加読み込み
                 if (index == notifications.lastIndex) {
                     LaunchedEffect(index) {
                         viewModel.loadMoreItems()

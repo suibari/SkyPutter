@@ -12,11 +12,6 @@ import work.socialhub.kbsky.api.entity.share.RKeyRequest
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-data class RefWithLikedOrReposted (
-    val ref: RepoStrongRef,
-    val isExec: Boolean,
-)
-
 @Composable
 fun LikesBackScreen(
     viewModel: LikesBackViewModel,
@@ -26,47 +21,43 @@ fun LikesBackScreen(
 ) {
     val feeds = viewModel.items
     val refreshing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
-        mainViewModel.setReplyContext(
-            parentRef = parentRef,
-            rootRef = rootRef,
-            parentPost = parentPost
-        )
+        mainViewModel.setReplyContext(parentRef, rootRef, parentPost)
         onNavigateToMain()
     }
-    val onLike: (RefWithLikedOrReposted) -> Unit = {
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.toggleLike(
-                ref = it.ref,
-                isLiked = it.isExec,
-            )
-        }
-    }
-    val onRepost: (RefWithLikedOrReposted) -> Unit = {
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.toggleRepost(
-                ref = it.ref,
-                isReposted = it.isExec,
-            )
+
+    val onLike: (RepoStrongRef) -> Unit = { ref ->
+        coroutineScope.launch {
+            viewModel.toggleLike(ref)
         }
     }
 
-    SwipeRefresh(state = rememberSwipeRefreshState(refreshing.value), onRefresh = {
-        refreshing.value = true
-        // 強制更新ロジック
-        CoroutineScope(Dispatchers.IO).launch {
-            viewModel.loadInitialItems(10)
-            refreshing.value = false
+    val onRepost: (RepoStrongRef) -> Unit = { ref ->
+        coroutineScope.launch {
+            viewModel.toggleRepost(ref)
         }
-    }) {
+    }
+
+    SwipeRefresh(
+        state = rememberSwipeRefreshState(refreshing.value),
+        onRefresh = {
+            coroutineScope.launch {
+                refreshing.value = true
+                viewModel.loadInitialItems(10)
+                refreshing.value = false
+            }
+        }
+    ) {
         PostListScreen(
             feeds = feeds,
             myDid = myDid,
+            viewerStatusProvider = viewModel,
             onLoadMore = { viewModel.loadMoreItems() },
-            onReply,
-            onLike,
-            onRepost,
+            onReply = onReply,
+            onLike = onLike,
+            onRepost = onRepost,
         )
     }
 }

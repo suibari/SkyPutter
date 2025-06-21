@@ -4,7 +4,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
+import com.suibari.skyposter.data.model.PaginatedListViewModel
+import com.suibari.skyposter.data.model.ViewerStatusProvider
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -12,16 +13,23 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 fun PostListScreen(
     feeds: List<DisplayFeed>,
     myDid: String,
+    viewerStatusProvider: ViewerStatusProvider,
     onLoadMore: () -> Unit,
     onReply: ((parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit)? = null,
-    onLike: ((ref: RefWithLikedOrReposted) -> Unit)? = null,
-    onRepost: ((ref: RefWithLikedOrReposted) -> Unit)? = null
+    onLike: ((RepoStrongRef) -> Unit)? = null,
+    onRepost: ((RepoStrongRef) -> Unit)? = null
 ) {
     LazyColumn {
         itemsIndexed(feeds) { index, feed ->
+            val viewer = viewerStatusProvider.viewerStatus[feed.uri]
+            val isLiked = viewer?.like != null
+            val isReposted = viewer?.repost != null
+
             PostItem(
                 feed = feed,
                 myDid = myDid,
+                isLiked = isLiked,
+                isReposted = isReposted,
                 onReply = onReply,
                 onLike = onLike,
                 onRepost = onRepost

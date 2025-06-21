@@ -18,61 +18,67 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 open class BskyPostActionRepository : PostActionRepository {
 
     suspend fun fetchViewerStatusMap(uris: List<String>): Map<String, FeedDefsViewerState?> {
-        return try {
-            val response = SessionManager.runWithAuthRetry { auth ->
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .feed()
-                    .getPosts(FeedGetPostsRequest(auth).also {
-                        it.uris = uris
-                    })
+        if (uris.isNotEmpty()) {
+            return try {
+                val response = SessionManager.runWithAuthRetry { auth ->
+                    BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .feed()
+                        .getPosts(FeedGetPostsRequest(auth).also {
+                            it.uris = uris
+                        })
+                }
+                response.data.posts.associate { post -> post.uri!! to post.viewer }
+            } catch (e: Exception) {
+                Log.e("BskyPostActionRepo", "Failed to fetch viewer status", e)
+                emptyMap()
             }
-            response.data.posts.associate { post -> post.uri!! to post.viewer }
-        } catch (e: Exception) {
-            Log.e("BskyPostActionRepo", "Failed to fetch viewer status", e)
-            emptyMap()
+        } else {
+            return emptyMap()
         }
     }
 
-    override suspend fun likePost(ref: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
+    override suspend fun likePost(ref: RepoStrongRef): String {
+        val response = SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
                 .feed()
                 .like(FeedLikeRequest(auth).apply { subject = ref })
         }
+        return response.data.uri
     }
 
-    override suspend fun unlikePost(ref: RepoStrongRef) {
-        val rkey = BskyUtil.parseAtUri(ref.uri)?.third
+    override suspend fun unlikePost(uri: String) {
+        val rkey = BskyUtil.parseAtUri(uri)?.third
         SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
                 .feed()
                 .deleteLike(FeedDeleteLikeRequest(auth).also {
-                    it.uri = ref.uri
+                    it.uri = uri
                     it.rkey = rkey
                 })
         }
     }
 
-    override suspend fun repostPost(ref: RepoStrongRef) {
-        SessionManager.runWithAuthRetry { auth ->
+    override suspend fun repostPost(ref: RepoStrongRef): String {
+        val response = SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
                 .feed()
                 .repost(FeedRepostRequest(auth).apply { subject = ref })
         }
+        return response.data.uri
     }
 
-    override suspend fun unRepostPost(ref: RepoStrongRef) {
-        val rkey = BskyUtil.parseAtUri(ref.uri)?.third
+    override suspend fun unRepostPost(uri: String) {
+        val rkey = BskyUtil.parseAtUri(uri)?.third
         SessionManager.runWithAuthRetry { auth ->
             BlueskyFactory
                 .instance(BSKY_SOCIAL.uri)
                 .feed()
                 .deleteRepost(FeedDeleteRepostRequest(auth).also {
-                    it.uri = ref.uri
+                    it.uri = uri
                     it.rkey = rkey
                 })
         }

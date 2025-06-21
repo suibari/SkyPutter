@@ -26,6 +26,7 @@ fun UserPostListScreen(
         PostListScreen(
             feeds = feeds,
             myDid = myDid,
+            viewerStatusProvider = viewModel,
             onLoadMore = { viewModel.loadMoreItems() },
         )
     }

@@ -33,22 +33,12 @@ class LikesBackRepository: BskyPostActionRepository () {
 
             // いいねリポスト状態取得
             val uris = feeds.map { feed -> feed.post.uri!! }
-            val responsePosts = SessionManager.runWithAuthRetry { auth ->
-                BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .feed()
-                    .getPosts(FeedGetPostsRequest(auth).also {
-                        it.uris = uris
-                    })
-            }
             val viewerStatusMap = fetchViewerStatusMap(uris)
 
             val displayFeeds = feeds.map { feed ->
                 val viewer = viewerStatusMap[feed.post.uri]
                 DisplayFeed(
                     raw = feed,
-                    isLiked = viewer?.like != null,
-                    isReposted = viewer?.repost != null,
                     likeUri = viewer?.like,
                     repostUri = viewer?.repost,
                 )

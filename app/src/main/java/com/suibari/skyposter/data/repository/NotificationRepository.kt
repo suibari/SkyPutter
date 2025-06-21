@@ -72,8 +72,6 @@ class NotificationRepository (
                 parentPost = parentPost,
                 parentPostRecord = parentPostRecord,
                 rootPostRecord = rootPostRecord,
-                isLiked = isLiked,
-                isReposted = isReposted,
                 likeUri = viewer?.like,
                 repostUri = viewer?.repost,
             )

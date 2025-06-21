@@ -32,7 +32,6 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -166,8 +165,8 @@ fun DisplayActions(
     rootRef: RepoStrongRef,
     feed: FeedPost?,
     onReply: ((RepoStrongRef, RepoStrongRef, FeedPost) -> Unit)?,
-    onLike: ((ref: RefWithLikedOrReposted) -> Unit)?,
-    onRepost: ((ref: RefWithLikedOrReposted) -> Unit)?
+    onLike: ((RepoStrongRef) -> Unit)?,
+    onRepost: ((RepoStrongRef) -> Unit)?
 ) {
     if (!isMyPost) {
         val likeColor = if (isLiked) Color.Red else Color.Black
@@ -194,10 +193,7 @@ fun DisplayActions(
                         .padding(end = 8.dp)
                         .clickable {
                             onLike?.invoke(
-                                RefWithLikedOrReposted(
-                                    ref = subjectRef,
-                                    isExec = isLiked,
-                                )
+                                subjectRef,
                             )
                         }
                 )
@@ -207,10 +203,7 @@ fun DisplayActions(
                     tint = repostColor,
                     modifier = Modifier.clickable {
                         onRepost?.invoke(
-                            RefWithLikedOrReposted(
-                                ref = subjectRef,
-                                isExec = isReposted,
-                            )
+                            subjectRef,
                         )
                     }
                 )

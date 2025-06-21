@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import com.suibari.skyposter.ui.post.DisplayActions
 import com.suibari.skyposter.ui.post.DisplayContent
 import com.suibari.skyposter.ui.post.DisplayHeader
@@ -19,9 +18,11 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 @Composable
 fun NotificationItem(
     notification: DisplayNotification,
+    isLiked: Boolean,
+    isReposted: Boolean,
     onReply: (parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit,
-    onLike: (ref: RefWithLikedOrReposted) -> Unit,
-    onRepost: (ref: RefWithLikedOrReposted) -> Unit,
+    onLike: (ref: RepoStrongRef) -> Unit,
+    onRepost: (ref: RepoStrongRef) -> Unit,
 ) {
     val record = notification.raw.record
 
@@ -58,8 +59,8 @@ fun NotificationItem(
 
             DisplayActions(
                 isMyPost = false,
-                isLiked = notification.isLiked,
-                isReposted = notification.isReposted,
+                isLiked = isLiked,
+                isReposted = isReposted,
                 subjectRef = subjectRef,
                 rootRef = rootRef,
                 feed = notification.raw.record.asFeedPost,

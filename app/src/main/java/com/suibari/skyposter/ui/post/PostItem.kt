@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.suibari.skyposter.ui.likesback.RefWithLikedOrReposted
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -14,9 +13,11 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 fun PostItem(
     feed: DisplayFeed,
     myDid: String,
+    isLiked: Boolean,
+    isReposted: Boolean,
     onReply: ((parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit)?,
-    onLike: ((ref: RefWithLikedOrReposted) -> Unit)?,
-    onRepost: ((ref: RefWithLikedOrReposted) -> Unit)?,
+    onLike: ((RepoStrongRef) -> Unit)?,
+    onRepost: ((RepoStrongRef) -> Unit)?,
 ) {
     val record = feed.raw.post.record?.asFeedPost!!
     val isMyPost = feed.raw.post.author?.did == myDid
@@ -51,8 +52,8 @@ fun PostItem(
 
             DisplayActions(
                 isMyPost = isMyPost,
-                isLiked = feed.isLiked == true,
-                isReposted = feed.isReposted == true,
+                isLiked = isLiked,
+                isReposted = isReposted,
                 subjectRef = subjectRef,
                 rootRef = rootRef,
                 feed = record,
