@@ -14,12 +14,12 @@ import androidx.navigation.compose.*
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.suibari.skyposter.data.model.GenericViewModelFactory
 import com.suibari.skyposter.data.repository.LikesBackRepository
 import com.suibari.skyposter.data.repository.MainRepository
 import com.suibari.skyposter.data.repository.NotificationRepoProvider
 import com.suibari.skyposter.data.repository.NotificationRepository
 import com.suibari.skyposter.data.repository.UserPostRepository
+import com.suibari.skyposter.service.NotificationPollingService
 import com.suibari.skyposter.ui.likesback.LikesBackScreen
 import com.suibari.skyposter.ui.likesback.LikesBackViewModel
 import com.suibari.skyposter.ui.loading.LoadingScreen
@@ -32,7 +32,6 @@ import com.suibari.skyposter.ui.post.UserPostViewModel
 import com.suibari.skyposter.ui.theme.SkyPosterTheme
 import com.suibari.skyposter.util.SessionManager
 import com.suibari.skyposter.worker.DeviceNotifier
-import com.suibari.skyposter.worker.NotificationWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -149,7 +148,6 @@ class MainActivity : ComponentActivity() {
                 LoginScreen(
                     application = application as SkyPosterApp,
                     onLoginSuccess = {
-                        scheduleNotificationWorker(context)
                         navController.navigate(Screen.Loading.route) {
                             popUpTo(Screen.Login.route) { inclusive = true }
                         }
@@ -201,6 +199,7 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     lifecycleScope.launch(Dispatchers.IO) {
                                         SessionManager.clearSession()
+                                        viewModelContainer.notificationViewModel?.stopBackgroundPolling()
                                         withContext(Dispatchers.Main) {
                                             navController.navigate(Screen.Login.route) {
                                                 popUpTo(Screen.Main.route) { inclusive = true }
@@ -386,13 +385,4 @@ class ViewModelContainer(private val context: Context) {
             throw e
         }
     }
-}
-
-fun scheduleNotificationWorker(context: Context) {
-    // バックグラウンドスレッドで実行
-    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-        "notification_worker",
-        ExistingPeriodicWorkPolicy.KEEP,
-        PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
-    )
 }

@@ -48,7 +48,7 @@ fun MainScreen(
 
     // 初期化処理
     LaunchedEffect(Unit) {
-        viewModel.initialize()
+        viewModel.initialize(context)
     }
 
     // 画像表示用ランチャー

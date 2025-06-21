@@ -1,5 +1,6 @@
 package com.suibari.skyposter.ui.main
 
+import android.content.Context
 import android.util.Log
 import com.suibari.skyposter.ui.notification.NotificationViewModel
 import androidx.compose.runtime.MutableState
@@ -9,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyposter.data.repository.MainRepository
+import com.suibari.skyposter.service.NotificationPollingService
 import com.suibari.skyposter.ui.likesback.LikesBackViewModel
 import com.suibari.skyposter.ui.post.UserPostViewModel
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +39,7 @@ class MainViewModel(
     var isInitialized by mutableStateOf(false)
         private set
 
-    fun initialize() {
+    fun initialize(context: Context) {
         viewModelScope.launch {
             try {
                 Log.d("MainViewModel", "initialize: start")
@@ -45,7 +47,7 @@ class MainViewModel(
                 _profile.value = repo.getProfile()
                 Log.d("MainViewModel", "profile loaded")
 
-                notificationViewModel.startPolling()
+                notificationViewModel.startBackgroundPolling()
 
                 Log.d("MainViewModel", "loading child view models")
                 userPostViewModel.loadInitialItemsIfNeeded()
