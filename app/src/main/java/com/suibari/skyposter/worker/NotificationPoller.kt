@@ -1,7 +1,7 @@
 package com.suibari.skyposter.worker
 
 import com.suibari.skyposter.data.repository.NotificationRepository
-import com.suibari.skyposter.ui.notification.DisplayNotification
+import com.suibari.skyposter.ui.type.DisplayNotification
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

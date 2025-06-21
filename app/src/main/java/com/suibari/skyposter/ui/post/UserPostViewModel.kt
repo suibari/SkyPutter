@@ -2,6 +2,7 @@ package com.suibari.skyposter.ui.post
 
 import com.suibari.skyposter.data.model.PaginatedListViewModel
 import com.suibari.skyposter.data.repository.UserPostRepository
+import com.suibari.skyposter.ui.type.DisplayFeed
 
 class UserPostViewModel (
     override val repo: UserPostRepository

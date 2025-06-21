@@ -2,7 +2,7 @@ package com.suibari.skyposter.ui.likesback
 
 import com.suibari.skyposter.data.model.PaginatedListViewModel
 import com.suibari.skyposter.data.repository.LikesBackRepository
-import com.suibari.skyposter.ui.post.DisplayFeed
+import com.suibari.skyposter.ui.type.DisplayFeed
 
 class LikesBackViewModel(
     override val repo: LikesBackRepository

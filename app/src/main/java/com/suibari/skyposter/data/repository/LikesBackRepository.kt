@@ -1,19 +1,15 @@
 package com.suibari.skyposter.data.repository
 
 import android.util.Log
-import com.suibari.skyposter.ui.post.DisplayFeed
+import com.suibari.skyposter.data.model.BskyPostActionRepository
+import com.suibari.skyposter.ui.type.DisplayFeed
 import com.suibari.skyposter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
-import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
-import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-class LikesBackRepository: BskyPostActionRepository () {
+class LikesBackRepository: BskyPostActionRepository() {
     suspend fun fetchLikesBack (limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
         return try {
             val response = SessionManager.runWithAuthRetry { auth ->

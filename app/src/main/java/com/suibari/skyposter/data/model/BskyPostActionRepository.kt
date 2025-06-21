@@ -1,4 +1,4 @@
-package com.suibari.skyposter.data.repository
+package com.suibari.skyposter.data.model
 
 import android.util.Log
 import com.suibari.skyposter.util.BskyUtil
@@ -9,10 +9,8 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteRepostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
-import work.socialhub.kbsky.api.entity.share.RKeyRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
-import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 open class BskyPostActionRepository : PostActionRepository {

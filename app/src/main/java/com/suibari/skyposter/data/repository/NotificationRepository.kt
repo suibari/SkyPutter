@@ -5,14 +5,11 @@ import android.content.SharedPreferences
 import android.util.Log
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNotificationsRequest
-import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import androidx.core.content.edit
-import com.suibari.skyposter.ui.notification.DisplayNotification
+import com.suibari.skyposter.data.model.BskyPostActionRepository
+import com.suibari.skyposter.ui.type.DisplayNotification
 import com.suibari.skyposter.util.BskyUtil
 import com.suibari.skyposter.util.SessionManager
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
-import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost

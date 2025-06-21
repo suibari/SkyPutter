@@ -3,6 +3,7 @@ package com.suibari.skyposter.ui.notification
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyposter.data.repository.NotificationRepository
 import com.suibari.skyposter.data.model.PaginatedListViewModel
+import com.suibari.skyposter.ui.type.DisplayNotification
 import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationPoller
 import kotlinx.coroutines.launch

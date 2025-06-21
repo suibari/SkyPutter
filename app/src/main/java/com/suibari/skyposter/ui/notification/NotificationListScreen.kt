@@ -13,6 +13,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
+import com.suibari.skyposter.data.model.PaginatedListScreen
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -23,7 +24,6 @@ fun NotificationListScreen(
     onNavigateToMain: () -> Unit
 ) {
     val notifications = viewModel.items
-    val refreshing = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
@@ -31,50 +31,29 @@ fun NotificationListScreen(
         onNavigateToMain()
     }
 
-    val onLike: (RepoStrongRef) -> Unit = { ref ->
-        coroutineScope.launch {
-            viewModel.toggleLike(ref)
-        }
-    }
-
-    val onRepost: (RepoStrongRef) -> Unit = { ref ->
-        coroutineScope.launch {
-            viewModel.toggleRepost(ref)
-        }
-    }
-
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(refreshing.value),
+    PaginatedListScreen(
+        items = notifications,
+        isRefreshing = false,
         onRefresh = {
-            coroutineScope.launch {
-                refreshing.value = true
-                viewModel.fetchNow()
-                refreshing.value = false
-            }
-        }
-    ) {
-        LazyColumn {
-            itemsIndexed(notifications) { index, notif ->
-                val viewer = viewModel.viewerStatus[notif.uri]
-                val isLiked = viewer?.like != null
-                val isReposted = viewer?.repost != null
+            viewModel.fetchNow()
+        },
+        onLoadMore = {
+            viewModel.loadMoreItems()
+        },
+        itemKey = { it.uri!! },
+        itemContent = { notif ->
+            val viewer = viewModel.viewerStatus[notif.uri]
+            val isLiked = viewer?.like != null
+            val isReposted = viewer?.repost != null
 
-                NotificationItem(
-                    notification = notif,
-                    isLiked = isLiked,
-                    isReposted = isReposted,
-                    onReply = onReply,
-                    onLike = onLike,
-                    onRepost = onRepost
-                )
-
-                // 最後のアイテムが表示されたら追加読み込み
-                if (index == notifications.lastIndex) {
-                    LaunchedEffect(index) {
-                        viewModel.loadMoreItems()
-                    }
-                }
-            }
+            NotificationItem(
+                notification = notif,
+                isLiked = isLiked,
+                isReposted = isReposted,
+                onReply = onReply,
+                onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
+                onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
+            )
         }
-    }
+    )
 }

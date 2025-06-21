@@ -3,6 +3,7 @@ package com.suibari.skyposter.ui.post
 import androidx.compose.runtime.*
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.suibari.skyposter.data.model.PaginatedListScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,21 +14,27 @@ fun UserPostListScreen(
     myDid: String,
 ) {
     val feeds = viewModel.items
-    val refreshing = remember { mutableStateOf(false) }
 
-    SwipeRefresh(state = rememberSwipeRefreshState(refreshing.value), onRefresh = {
-        refreshing.value = true
-        // 強制更新ロジック
-        CoroutineScope(Dispatchers.IO).launch {
+    PaginatedListScreen(
+        items = feeds,
+        isRefreshing = false,
+        onRefresh = {
             viewModel.loadInitialItems(25)
-            refreshing.value = false
+        },
+        onLoadMore = {
+            viewModel.loadMoreItems()
+        },
+        itemKey = { it.uri!! },
+        itemContent = { feed ->
+            PostItem(
+                feed = feed,
+                myDid = myDid,
+                isLiked = false,
+                isReposted = false,
+                onReply = null,
+                onLike = null,
+                onRepost = null,
+            )
         }
-    }) {
-        PostListScreen(
-            feeds = feeds,
-            myDid = myDid,
-            viewerStatus = viewModel.viewerStatus,
-            onLoadMore = { viewModel.loadMoreItems() },
-        )
-    }
+    )
 }

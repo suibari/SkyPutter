@@ -1,4 +1,4 @@
-package com.suibari.skyposter.ui.post
+package com.suibari.skyposter.ui.type
 
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
 

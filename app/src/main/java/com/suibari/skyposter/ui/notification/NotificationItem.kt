@@ -11,6 +11,7 @@ import com.suibari.skyposter.ui.post.DisplayContent
 import com.suibari.skyposter.ui.post.DisplayHeader
 import com.suibari.skyposter.ui.post.DisplayImage
 import com.suibari.skyposter.ui.post.DisplayParentPost
+import com.suibari.skyposter.ui.type.DisplayNotification
 import com.suibari.skyposter.util.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef

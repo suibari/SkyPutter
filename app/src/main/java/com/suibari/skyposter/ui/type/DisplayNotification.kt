@@ -1,6 +1,5 @@
-package com.suibari.skyposter.ui.notification
+package com.suibari.skyposter.ui.type
 
-import com.suibari.skyposter.ui.post.HasUri
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.notification.NotificationListNotificationsNotification
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef

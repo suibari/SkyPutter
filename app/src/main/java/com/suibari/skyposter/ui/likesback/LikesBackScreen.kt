@@ -2,13 +2,9 @@ package com.suibari.skyposter.ui.likesback
 
 import com.suibari.skyposter.ui.main.MainViewModel
 import androidx.compose.runtime.*
-import com.suibari.skyposter.ui.post.PostListScreen
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import com.suibari.skyposter.data.model.PaginatedListScreen
+import com.suibari.skyposter.ui.post.PostItem
 import kotlinx.coroutines.launch
-import work.socialhub.kbsky.api.entity.share.RKeyRequest
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -20,7 +16,6 @@ fun LikesBackScreen(
     onNavigateToMain: () -> Unit,
 ) {
     val feeds = viewModel.items
-    val refreshing = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
@@ -28,36 +23,30 @@ fun LikesBackScreen(
         onNavigateToMain()
     }
 
-    val onLike: (RepoStrongRef) -> Unit = { ref ->
-        coroutineScope.launch {
-            viewModel.toggleLike(ref)
-        }
-    }
-
-    val onRepost: (RepoStrongRef) -> Unit = { ref ->
-        coroutineScope.launch {
-            viewModel.toggleRepost(ref)
-        }
-    }
-
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(refreshing.value),
+    PaginatedListScreen(
+        items = feeds,
+        isRefreshing = false,
         onRefresh = {
-            coroutineScope.launch {
-                refreshing.value = true
-                viewModel.loadInitialItems(25)
-                refreshing.value = false
-            }
+            viewModel.loadInitialItems(25)
+        },
+        onLoadMore = {
+            viewModel.loadMoreItems()
+        },
+        itemKey = { it.uri!! },
+        itemContent = { feed ->
+            val viewer = viewModel.viewerStatus[feed.uri]
+            val isLiked = viewer?.like != null
+            val isReposted = viewer?.repost != null
+
+            PostItem(
+                feed = feed,
+                myDid = myDid,
+                isLiked = isLiked,
+                isReposted = isReposted,
+                onReply = onReply,
+                onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
+                onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
+            )
         }
-    ) {
-        PostListScreen(
-            feeds = feeds,
-            myDid = myDid,
-            viewerStatus = viewModel.viewerStatus,
-            onLoadMore = { viewModel.loadMoreItems() },
-            onReply = onReply,
-            onLike = onLike,
-            onRepost = onRepost,
-        )
-    }
+    )
 }

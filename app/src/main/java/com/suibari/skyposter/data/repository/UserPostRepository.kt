@@ -1,14 +1,15 @@
 package com.suibari.skyposter.data.repository
 
 import android.util.Log
-import com.suibari.skyposter.ui.post.DisplayFeed
+import com.suibari.skyposter.data.model.BskyPostActionRepository
+import com.suibari.skyposter.ui.type.DisplayFeed
 import com.suibari.skyposter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
-class UserPostRepository: BskyPostActionRepository () {
+class UserPostRepository: BskyPostActionRepository() {
     suspend fun fetchUserPosts (limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
         return try {
             val did = SessionManager.getSession().did

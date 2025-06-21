@@ -5,9 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.suibari.skyposter.data.repository.BskyPostActionRepository
-import com.suibari.skyposter.data.repository.PostActionRepository
-import com.suibari.skyposter.ui.post.HasUri
+import com.suibari.skyposter.ui.type.HasUri
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
