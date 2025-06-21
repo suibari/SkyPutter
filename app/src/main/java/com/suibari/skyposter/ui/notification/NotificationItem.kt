@@ -6,11 +6,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.suibari.skyposter.ui.post.DisplayActions
-import com.suibari.skyposter.ui.post.DisplayContent
-import com.suibari.skyposter.ui.post.DisplayHeader
-import com.suibari.skyposter.ui.post.DisplayImage
-import com.suibari.skyposter.ui.post.DisplayParentPost
+import com.suibari.skyposter.data.model.DisplayActions
+import com.suibari.skyposter.data.model.DisplayContent
+import com.suibari.skyposter.data.model.DisplayHeader
+import com.suibari.skyposter.data.model.DisplayImage
+import com.suibari.skyposter.data.model.DisplayParentPost
 import com.suibari.skyposter.ui.type.DisplayNotification
 import com.suibari.skyposter.util.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost

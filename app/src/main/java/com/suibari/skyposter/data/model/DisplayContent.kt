@@ -1,4 +1,4 @@
-package com.suibari.skyposter.ui.post
+package com.suibari.skyposter.data.model
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -43,16 +43,22 @@ data class DisplayImage (
 
 @Composable
 fun DisplayHeader(
+
     avatarUrl: String?,
     reason: String? = null,
     showNewMark: Boolean = false
 ) {
     Row (modifier = Modifier.padding(8.dp)) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
+        val context = LocalContext.current
+        val imageRequest = remember(avatarUrl) {
+            ImageRequest.Builder(context)
                 .data(avatarUrl)
                 .crossfade(true)
-                .build(),
+                .build()
+        }
+
+        AsyncImage(
+            model = imageRequest,
             contentDescription = "avatar",
             modifier = Modifier.size(48.dp)
         )
