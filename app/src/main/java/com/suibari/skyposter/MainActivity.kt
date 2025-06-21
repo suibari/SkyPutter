@@ -33,146 +33,366 @@ import com.suibari.skyposter.ui.theme.SkyPosterTheme
 import com.suibari.skyposter.util.SessionManager
 import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationWorker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+
+    // セッション情報を保持
+    private var sessionState by mutableStateOf<SessionState>(SessionState.Loading)
+
+    // ViewModelContainer を Activity レベルで管理
+    private lateinit var viewModelContainer: ViewModelContainer
+
+    sealed class SessionState {
+        object Loading : SessionState()
+        data class Loaded(val hasSession: Boolean, val myDid: String?) : SessionState()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Session初期化
-        SessionManager.initialize(applicationContext)
+        Log.d("MainActivity", "onCreate: start")
 
-        // シングルトンSession をここで取得して Compose に渡す
-        lifecycleScope.launch {
-            val session = SessionManager.getSession()
+        // ViewModelContainer を初期化
+        viewModelContainer = ViewModelContainer(applicationContext)
 
-            val hasSession = session.accessJwt != null && session.refreshJwt != null && session.did != null
-            val myDid = session.did
+        // まずUIを設定（軽量）
+        setContent {
+            SkyPosterTheme {
+                AppContent()
+            }
+        }
 
-            setContent {
-                SkyPosterTheme {
-                    val navController = rememberNavController()
-                    val context = LocalContext.current
+        // 重い初期化処理は別スレッドで実行
+        initializeApp()
+    }
 
-                    // notification factory
-                    val deviceNotifier = DeviceNotifier(context)
-                    val notificationRepo = NotificationRepoProvider.getInstance(context)
-                    val factoryNotification = GenericViewModelFactory { NotificationViewModel(
-                        repo = notificationRepo,
-                        notifier = deviceNotifier
-                    )}
-                    val notificationViewModel: NotificationViewModel = viewModel(factory = factoryNotification)
+    private fun initializeApp() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                Log.d("MainActivity", "initializeApp: start")
 
-                    // profile factory
-                    val userPostRepo = UserPostRepository()
-                    val factoryUserPost = GenericViewModelFactory { UserPostViewModel(userPostRepo) }
-                    val userPostViewModel: UserPostViewModel = viewModel(factory = factoryUserPost)
+                // SessionManager初期化
+                SessionManager.initialize(applicationContext)
 
-                    // likesback factory
-                    val likesbackRepo = LikesBackRepository()
-                    val factoryLikesBack = GenericViewModelFactory { LikesBackViewModel(likesbackRepo) }
-                    val likesBackViewModel: LikesBackViewModel = viewModel(factory = factoryLikesBack)
+                // セッション取得（重い処理の可能性があるため別スレッド）
+                val session = SessionManager.getSession()
+                val hasSession = session.accessJwt != null &&
+                        session.refreshJwt != null &&
+                        session.did != null
+                val myDid = session.did
 
-                    // main factory
-                    val mainRepo = MainRepository()
-                    val factoryMain = GenericViewModelFactory { MainViewModel(
-                        repo = mainRepo,
-                        userPostViewModel = userPostViewModel,
-                        notificationViewModel = notificationViewModel,
-                        likesBackViewModel = likesBackViewModel,
-                    ) }
-                    val mainViewModel: MainViewModel = viewModel(factory = factoryMain)
+                Log.d("MainActivity", "initializeApp: session loaded, hasSession=$hasSession")
 
-                    val coroutineScope = rememberCoroutineScope()
+                // セッションがある場合はViewModelも事前に初期化
+                if (hasSession) {
+                    Log.d("MainActivity", "Pre-initializing ViewModels for existing session")
+                    viewModelContainer.initializeViewModels()
+                }
 
-                    NavHost(
-                        navController = navController,
-                        startDestination = if (hasSession) Screen.Main.route else Screen.Login.route
-                    ) {
-                        composable(Screen.Login.route) {
-                            LoginScreen(
-                                application = application as SkyPosterApp,
-                                onLoginSuccess = {
-                                    // バックグラウンド通知はログイン時に1度だけ実行すればいい
-                                    scheduleNotificationWorker(context)
+                // メインスレッドでUI状態を更新
+                withContext(Dispatchers.Main) {
+                    sessionState = SessionState.Loaded(hasSession, myDid)
+                }
 
-                                    // メイン画面に遷移
-                                    navController.navigate(Screen.Loading.route) {
-                                        popUpTo(Screen.Login.route) { inclusive = true }
-                                    }
-                                }
-                            )
+                Log.d("MainActivity", "initializeApp: completed")
+
+            } catch (e: Exception) {
+                Log.e("MainActivity", "initializeApp: error", e)
+                // エラー時もUIを更新
+                withContext(Dispatchers.Main) {
+                    sessionState = SessionState.Loaded(false, null)
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun AppContent() {
+        val context = LocalContext.current
+
+        when (val state = sessionState) {
+            is SessionState.Loading -> {
+                // セッション読み込み中の画面
+                LoadingScreen()
+            }
+            is SessionState.Loaded -> {
+                AppNavigation(
+                    context = context,
+                    hasSession = state.hasSession,
+                    myDid = state.myDid
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun AppNavigation(
+        context: Context,
+        hasSession: Boolean,
+        myDid: String?
+    ) {
+        val navController = rememberNavController()
+
+        // 初期化状態を監視
+        val initState = viewModelContainer.initializationState
+
+        NavHost(
+            navController = navController,
+            startDestination = if (hasSession) Screen.Main.route else Screen.Login.route
+        ) {
+            composable(Screen.Login.route) {
+                LoginScreen(
+                    application = application as SkyPosterApp,
+                    onLoginSuccess = {
+                        scheduleNotificationWorker(context)
+                        navController.navigate(Screen.Loading.route) {
+                            popUpTo(Screen.Login.route) { inclusive = true }
                         }
-                        composable(Screen.Loading.route) {
-                            LoadingScreen()
+                    }
+                )
+            }
 
-                            LaunchedEffect(Unit) {
-                                // 少し待機（MainViewModelが準備完了する時間を確保）
-                                delay(300) // もしくは必要に応じて500ms程度
+            composable(Screen.Loading.route) {
+                LoadingScreen()
+
+                LaunchedEffect(Unit) {
+                    try {
+                        Log.d("MainActivity", "Loading screen: starting ViewModel initialization")
+
+                        // ViewModelの初期化を非同期で実行
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            viewModelContainer.initializeViewModels()
+
+                            delay(300) // UI準備時間
+
+                            withContext(Dispatchers.Main) {
+                                Log.d("MainActivity", "Loading screen: navigating to main")
                                 navController.navigate(Screen.Main.route) {
                                     popUpTo(Screen.Loading.route) { inclusive = true }
                                 }
                             }
                         }
-                        composable(Screen.Main.route) {
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Loading failed", e)
+                        // エラー時はログイン画面に戻る
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(Screen.Loading.route) { inclusive = true }
+                        }
+                    }
+                }
+            }
+
+            composable(Screen.Main.route) {
+                Log.d("MainActivity", "Main screen composable, initState: $initState")
+
+                // ViewModelが初期化完了している場合のみ表示
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        viewModelContainer.mainViewModel?.let { mainVM ->
+                            Log.d("MainActivity", "Showing MainScreen")
                             MainScreen(
                                 application = application as SkyPosterApp,
-                                viewModel = mainViewModel,
+                                viewModel = mainVM,
                                 onLogout = {
-                                    lifecycleScope.launch {
+                                    lifecycleScope.launch(Dispatchers.IO) {
                                         SessionManager.clearSession()
-                                        navController.navigate(Screen.Login.route) {
-                                            popUpTo(Screen.Main.route) { inclusive = true }
+                                        withContext(Dispatchers.Main) {
+                                            navController.navigate(Screen.Login.route) {
+                                                popUpTo(Screen.Main.route) { inclusive = true }
+                                            }
                                         }
                                     }
                                 },
-                                onOpenNotification = { navController.navigate(Screen.NotificationList.route) },
-                                onOpenUserPost = { navController.navigate(Screen.UserPost.route) },
-                                onOpenLikesBack = { navController.navigate(Screen.LikesBack.route) }
-                            )
-                        }
-                        composable(Screen.NotificationList.route) {
-                            NotificationListScreen(
-                                viewModel = notificationViewModel,
-                                mainViewModel = mainViewModel,
-                                onNavigateToMain = {
-                                    navController.navigate("main")
+                                onOpenNotification = {
+                                    navController.navigate(Screen.NotificationList.route)
+                                },
+                                onOpenUserPost = {
+                                    navController.navigate(Screen.UserPost.route)
+                                },
+                                onOpenLikesBack = {
+                                    navController.navigate(Screen.LikesBack.route)
                                 }
                             )
-                        }
-                        composable(Screen.UserPost.route) {
-                            UserPostListScreen(
-                                viewModel = userPostViewModel,
-                                myDid = myDid!!,
-                            )
-                        }
-                        composable(Screen.LikesBack.route) {
-                            LikesBackScreen(
-                                viewModel = likesBackViewModel,
-                                mainViewModel = mainViewModel,
-                                myDid = myDid!!,
-                                onNavigateToMain = {
-                                    navController.navigate("main")
-                                }
-                            )
+                        } ?: run {
+                            Log.d("MainActivity", "MainViewModel is null, showing loading")
+                            LoadingScreen()
                         }
                     }
+                    is ViewModelContainer.InitializationState.Error -> {
+                        Log.e("MainActivity", "ViewModel initialization error: ${initState.exception}")
+                        // エラー画面を表示するか、ログイン画面に戻る
+                        LaunchedEffect(Unit) {
+                            navController.navigate(Screen.Login.route) {
+                                popUpTo(Screen.Main.route) { inclusive = true }
+                            }
+                        }
+                        LoadingScreen()
+                    }
+                    else -> {
+                        Log.d("MainActivity", "ViewModels not ready, showing loading. State: $initState")
+                        LoadingScreen()
+                    }
+                }
+            }
+
+            composable(Screen.NotificationList.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        val notificationVM = viewModelContainer.notificationViewModel
+                        val mainVM = viewModelContainer.mainViewModel
+
+                        if (notificationVM != null && mainVM != null) {
+                            NotificationListScreen(
+                                viewModel = notificationVM,
+                                mainViewModel = mainVM,
+                                onNavigateToMain = {
+                                    navController.navigate("main")
+                                }
+                            )
+                        } else {
+                            LoadingScreen()
+                        }
+                    }
+                    else -> LoadingScreen()
+                }
+            }
+
+            composable(Screen.UserPost.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        viewModelContainer.userPostViewModel?.let { userPostVM ->
+                            UserPostListScreen(
+                                viewModel = userPostVM,
+                                myDid = myDid!!,
+                            )
+                        } ?: LoadingScreen()
+                    }
+                    else -> LoadingScreen()
+                }
+            }
+
+            composable(Screen.LikesBack.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        val likesBackVM = viewModelContainer.likesBackViewModel
+                        val mainVM = viewModelContainer.mainViewModel
+
+                        if (likesBackVM != null && mainVM != null) {
+                            LikesBackScreen(
+                                viewModel = likesBackVM,
+                                mainViewModel = mainVM,
+                                myDid = myDid!!,
+                                onNavigateToMain = {
+                                    navController.navigate("main")
+                                }
+                            )
+                        } else {
+                            LoadingScreen()
+                        }
+                    }
+                    else -> LoadingScreen()
                 }
             }
         }
     }
 }
 
-fun scheduleNotificationWorker(context: Context) {
-    val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(
-        15, TimeUnit.MINUTES
-    ).build()
+// ViewModelを管理するクラス
+class ViewModelContainer(private val context: Context) {
 
+    // 初期化状態を管理
+    private var _initializationState by mutableStateOf<InitializationState>(InitializationState.NotStarted)
+    val initializationState: InitializationState get() = _initializationState
+
+    // nullable なViewModelプロパティ
+    var notificationViewModel: NotificationViewModel? by mutableStateOf(null)
+        private set
+    var userPostViewModel: UserPostViewModel? by mutableStateOf(null)
+        private set
+    var likesBackViewModel: LikesBackViewModel? by mutableStateOf(null)
+        private set
+    var mainViewModel: MainViewModel? by mutableStateOf(null)
+        private set
+
+    sealed class InitializationState {
+        object NotStarted : InitializationState()
+        object InProgress : InitializationState()
+        object Completed : InitializationState()
+        data class Error(val exception: Exception) : InitializationState()
+    }
+
+    suspend fun initializeViewModels() {
+        // 既に完了している場合はスキップ
+        if (_initializationState is InitializationState.Completed) {
+            Log.d("ViewModelContainer", "ViewModels already initialized")
+            return
+        }
+
+        // 進行中の場合は待機
+        if (_initializationState is InitializationState.InProgress) {
+            Log.d("ViewModelContainer", "ViewModel initialization already in progress")
+            return
+        }
+
+        _initializationState = InitializationState.InProgress
+        Log.d("ViewModelContainer", "initializeViewModels: start")
+
+        try {
+            withContext(Dispatchers.IO) {
+                // Repository の初期化
+                Log.d("ViewModelContainer", "Initializing repositories...")
+                val deviceNotifier = DeviceNotifier(context)
+                val notificationRepo = NotificationRepoProvider.getInstance(context)
+                val userPostRepo = UserPostRepository()
+                val likesbackRepo = LikesBackRepository()
+                val mainRepo = MainRepository()
+
+                Log.d("ViewModelContainer", "Repositories initialized")
+
+                // ViewModelの作成（メインスレッドで作成）
+                withContext(Dispatchers.Main) {
+                    Log.d("ViewModelContainer", "Creating ViewModels...")
+
+                    notificationViewModel = NotificationViewModel(
+                        repo = notificationRepo,
+                        notifier = deviceNotifier
+                    )
+
+                    userPostViewModel = UserPostViewModel(userPostRepo)
+                    likesBackViewModel = LikesBackViewModel(likesbackRepo)
+
+                    mainViewModel = MainViewModel(
+                        repo = mainRepo,
+                        userPostViewModel = userPostViewModel!!,
+                        notificationViewModel = notificationViewModel!!,
+                        likesBackViewModel = likesBackViewModel!!,
+                    )
+
+                    Log.d("ViewModelContainer", "ViewModels created successfully")
+                }
+            }
+
+            _initializationState = InitializationState.Completed
+            Log.d("ViewModelContainer", "initializeViewModels: completed successfully")
+
+        } catch (e: Exception) {
+            Log.e("ViewModelContainer", "initializeViewModels: error", e)
+            _initializationState = InitializationState.Error(e)
+            throw e
+        }
+    }
+}
+
+fun scheduleNotificationWorker(context: Context) {
+    // バックグラウンドスレッドで実行
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(
         "notification_worker",
         ExistingPeriodicWorkPolicy.KEEP,
-        workRequest
+        PeriodicWorkRequestBuilder<NotificationWorker>(15, TimeUnit.MINUTES).build()
     )
 }
