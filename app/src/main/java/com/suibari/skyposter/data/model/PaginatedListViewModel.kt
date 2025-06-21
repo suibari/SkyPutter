@@ -1,5 +1,6 @@
 package com.suibari.skyposter.data.model
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
@@ -11,19 +12,15 @@ import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-interface ViewerStatusProvider {
-    val viewerStatus: Map<String, FeedDefsViewerState?>
-}
-
 abstract class PaginatedListViewModel<T : HasUri> :
-    ViewModel(), ViewerStatusProvider {
+    ViewModel() {
 
     protected abstract val repo: BskyPostActionRepository
     protected val _items = mutableStateListOf<T>()
     val items: List<T> = _items
 
     protected val viewerStatusMap = mutableStateMapOf<String, FeedDefsViewerState?>()
-    override val viewerStatus: Map<String, FeedDefsViewerState?>
+    val viewerStatus: Map<String, FeedDefsViewerState?>
         get() = viewerStatusMap
 
     protected var cursor: String? = null
@@ -32,25 +29,29 @@ abstract class PaginatedListViewModel<T : HasUri> :
 
     abstract suspend fun fetchItems(limit: Int, cursor: String? = null): Pair<List<T>, String?>
 
-    fun loadInitialItems(limit: Int = 10) {
+    fun loadInitialItems(limit: Int = 25) {
         viewModelScope.launch {
+            Log.d("PaginatedViewModel", "loadInitialItems: start, limit=$limit")
             isLoading = true
             val (newItems, newCursor) = fetchItems(limit)
+            Log.d("PaginatedViewModel", "loadInitialItems: start, fetched =${newItems.size}, cursor = $cursor")
             _items.clear()
             _items.addAll(newItems)
+            Log.d("PaginatedViewModel", "loadInitialItems: addAll, _items =${_items.size}")
             updateViewerStatus(newItems)
+            Log.d("PaginatedViewModel", "loadInitialItems: updateViewerStatus")
             cursor = newCursor
             isLoading = false
         }
     }
 
-    fun loadInitialItemsIfNeeded(limit: Int = 10) {
+    fun loadInitialItemsIfNeeded(limit: Int = 25) {
         if (initialized) return
         initialized = true
         loadInitialItems(limit)
     }
 
-    fun loadMoreItems(limit: Int = 10) {
+    fun loadMoreItems(limit: Int = 25) {
         if (isLoading || cursor == null) return
         viewModelScope.launch {
             isLoading = true

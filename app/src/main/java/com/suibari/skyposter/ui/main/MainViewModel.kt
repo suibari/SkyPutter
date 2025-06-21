@@ -47,12 +47,10 @@ class MainViewModel(
 
                 notificationViewModel.startPolling()
 
-                withContext(Dispatchers.IO) {
-                    Log.d("MainViewModel", "loading child view models")
-                    userPostViewModel.loadInitialItemsIfNeeded()
-                    notificationViewModel.loadInitialItemsIfNeeded()
-                    likesBackViewModel.loadInitialItemsIfNeeded()
-                }
+                Log.d("MainViewModel", "loading child view models")
+                userPostViewModel.loadInitialItemsIfNeeded()
+                notificationViewModel.loadInitialItemsIfNeeded()
+                likesBackViewModel.loadInitialItemsIfNeeded()
 
                 Log.d("MainViewModel", "initialization finished")
                 isInitialized = true

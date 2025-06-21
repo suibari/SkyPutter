@@ -45,7 +45,7 @@ fun LikesBackScreen(
         onRefresh = {
             coroutineScope.launch {
                 refreshing.value = true
-                viewModel.loadInitialItems(10)
+                viewModel.loadInitialItems(25)
                 refreshing.value = false
             }
         }
@@ -53,7 +53,7 @@ fun LikesBackScreen(
         PostListScreen(
             feeds = feeds,
             myDid = myDid,
-            viewerStatusProvider = viewModel,
+            viewerStatus = viewModel.viewerStatus,
             onLoadMore = { viewModel.loadMoreItems() },
             onReply = onReply,
             onLike = onLike,

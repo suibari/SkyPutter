@@ -31,16 +31,9 @@ class LikesBackRepository: BskyPostActionRepository () {
             val feeds = response.data.feed
             val newCursor = response.data.cursor
 
-            // いいねリポスト状態取得
-            val uris = feeds.map { feed -> feed.post.uri!! }
-            val viewerStatusMap = fetchViewerStatusMap(uris)
-
             val displayFeeds = feeds.map { feed ->
-                val viewer = viewerStatusMap[feed.post.uri]
                 DisplayFeed(
                     raw = feed,
-                    likeUri = viewer?.like,
-                    repostUri = viewer?.repost,
                 )
             }
 

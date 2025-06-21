@@ -19,14 +19,14 @@ fun UserPostListScreen(
         refreshing.value = true
         // 強制更新ロジック
         CoroutineScope(Dispatchers.IO).launch {
-            viewModel.loadInitialItems(10)
+            viewModel.loadInitialItems(25)
             refreshing.value = false
         }
     }) {
         PostListScreen(
             feeds = feeds,
             myDid = myDid,
-            viewerStatusProvider = viewModel,
+            viewerStatus = viewModel.viewerStatus,
             onLoadMore = { viewModel.loadMoreItems() },
         )
     }

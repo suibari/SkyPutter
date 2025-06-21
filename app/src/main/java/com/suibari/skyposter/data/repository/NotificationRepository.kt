@@ -63,8 +63,6 @@ class NotificationRepository (
             val parentPost: FeedPost? = getRecord(parentPostRecord)
 
             val viewer = viewerStatusMap[notif.uri]
-            val isLiked = viewer?.like != null
-            val isReposted = viewer?.repost != null
 
             DisplayNotification(
                 raw = notif,

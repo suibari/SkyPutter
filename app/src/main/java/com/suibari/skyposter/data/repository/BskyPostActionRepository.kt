@@ -17,6 +17,9 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 open class BskyPostActionRepository : PostActionRepository {
 
+    /**
+     * limitは25件以下でないとAPIエラーとなる!!
+     * */
     suspend fun fetchViewerStatusMap(uris: List<String>): Map<String, FeedDefsViewerState?> {
         if (uris.isNotEmpty()) {
             return try {

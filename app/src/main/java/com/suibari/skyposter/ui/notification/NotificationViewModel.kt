@@ -7,7 +7,6 @@ import com.suibari.skyposter.worker.DeviceNotifier
 import com.suibari.skyposter.worker.NotificationPoller
 import kotlinx.coroutines.launch
 
-
 class NotificationViewModel(
     override val repo: NotificationRepository,
     private val notifier: DeviceNotifier
