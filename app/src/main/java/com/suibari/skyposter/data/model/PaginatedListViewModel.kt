@@ -3,17 +3,22 @@ package com.suibari.skyposter.data.model
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyposter.ui.type.HasUri
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
-abstract class PaginatedListViewModel<T : HasUri> :
-    ViewModel() {
+abstract class PaginatedListViewModel<T : HasUri> : ViewModel() {
 
     protected abstract val repo: BskyPostActionRepository
+
     protected val _items = mutableStateListOf<T>()
     val items: List<T> = _items
 
@@ -21,25 +26,50 @@ abstract class PaginatedListViewModel<T : HasUri> :
     val viewerStatus: Map<String, FeedDefsViewerState?>
         get() = viewerStatusMap
 
+    // ローディング状態を外部に公開
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: Boolean get() = _isRefreshing.value
+
+    private val _isLoadingMore = mutableStateOf(false)
+    val isLoadingMore: Boolean get() = _isLoadingMore.value
+
     protected var cursor: String? = null
-    protected var isLoading = false
     private var initialized = false
+
+    // 並行実行制御用のMutex
+    private val loadMutex = Mutex()
+    private val actionMutex = Mutex()
 
     abstract suspend fun fetchItems(limit: Int, cursor: String? = null): Pair<List<T>, String?>
 
     fun loadInitialItems(limit: Int = 25) {
         viewModelScope.launch {
-            Log.d("PaginatedViewModel", "loadInitialItems: start, limit=$limit")
-            isLoading = true
-            val (newItems, newCursor) = fetchItems(limit)
-            Log.d("PaginatedViewModel", "loadInitialItems: start, fetched =${newItems.size}, cursor = $cursor")
-            _items.clear()
-            _items.addAll(newItems)
-            Log.d("PaginatedViewModel", "loadInitialItems: addAll, _items =${_items.size}")
-            updateViewerStatus(newItems)
-            Log.d("PaginatedViewModel", "loadInitialItems: updateViewerStatus")
-            cursor = newCursor
-            isLoading = false
+            loadMutex.withLock {
+                try {
+                    Log.d("PaginatedViewModel", "loadInitialItems: start, limit=$limit")
+                    _isRefreshing.value = true
+
+                    withContext(Dispatchers.IO) {
+                        val (newItems, newCursor) = fetchItems(limit)
+                        Log.d("PaginatedViewModel", "loadInitialItems: fetched ${newItems.size} items")
+
+                        withContext(Dispatchers.Main) {
+                            _items.clear()
+                            _items.addAll(newItems)
+                            cursor = newCursor
+                        }
+
+                        updateViewerStatus(newItems)
+                    }
+
+                    Log.d("PaginatedViewModel", "loadInitialItems: completed, total items=${_items.size}")
+                } catch (e: Exception) {
+                    Log.e("PaginatedViewModel", "loadInitialItems: error", e)
+                    // エラー状態を必要に応じて公開
+                } finally {
+                    _isRefreshing.value = false
+                }
+            }
         }
     }
 
@@ -49,22 +79,57 @@ abstract class PaginatedListViewModel<T : HasUri> :
         loadInitialItems(limit)
     }
 
-    fun loadMoreItems(limit: Int = 25) {
-        if (isLoading || cursor == null) return
-        viewModelScope.launch {
-            isLoading = true
-            val (newItems, newCursor) = fetchItems(limit, cursor)
-            _items.addAll(newItems)
-            updateViewerStatus(newItems)
-            cursor = newCursor
-            isLoading = false
+    suspend fun loadMoreItems(limit: Int = 25) {
+        if (_isLoadingMore.value || _isRefreshing.value || cursor == null) return
+
+        loadMutex.withLock {
+            try {
+                _isLoadingMore.value = true
+                Log.d("PaginatedViewModel", "loadMoreItems: start, cursor=$cursor")
+
+                withContext(Dispatchers.IO) {
+                    val (newItems, newCursor) = fetchItems(limit, cursor)
+                    Log.d("PaginatedViewModel", "loadMoreItems: fetched ${newItems.size} items")
+
+                    if (newItems.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            _items.addAll(newItems)
+                            cursor = newCursor
+                        }
+
+                        updateViewerStatus(newItems)
+                    }
+                }
+
+                Log.d("PaginatedViewModel", "loadMoreItems: completed, total items=${_items.size}")
+            } catch (e: Exception) {
+                Log.e("PaginatedViewModel", "loadMoreItems: error", e)
+            } finally {
+                _isLoadingMore.value = false
+            }
         }
     }
 
+    suspend fun refreshItems(limit: Int = 25) {
+        cursor = null
+        loadInitialItems(limit)
+    }
+
     protected suspend fun updateViewerStatus(newItems: List<T>) {
-        val uris = newItems.mapNotNull { it.uri }
-        val map = repo.fetchViewerStatusMap(uris)
-        viewerStatusMap.putAll(map)
+        try {
+            withContext(Dispatchers.IO) {
+                val uris = newItems.mapNotNull { it.uri }
+                if (uris.isNotEmpty()) {
+                    val map = repo.fetchViewerStatusMap(uris)
+
+                    withContext(Dispatchers.Main) {
+                        viewerStatusMap.putAll(map)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("PaginatedViewModel", "updateViewerStatus: error", e)
+        }
     }
 
     fun getViewer(uri: String): FeedDefsViewerState? = viewerStatusMap[uri]
@@ -75,17 +140,34 @@ abstract class PaginatedListViewModel<T : HasUri> :
         val isLiked = current?.like != null
 
         viewModelScope.launch {
-            if (isLiked) {
-                repo.unlikePost(viewerStatusMap[uri]?.like!!)
-                viewerStatusMap[uri] = FeedDefsViewerState().apply {
-                    repost = current?.repost
-                    like = null
-                }
-            } else {
-                val likeUri = repo.likePost(ref)
-                viewerStatusMap[uri] = FeedDefsViewerState().apply {
-                    repost = current?.repost
-                    like = likeUri
+            actionMutex.withLock {
+                try {
+                    withContext(Dispatchers.IO) {
+                        if (isLiked) {
+                            current?.like?.let { likeUri ->
+                                repo.unlikePost(likeUri)
+
+                                withContext(Dispatchers.Main) {
+                                    viewerStatusMap[uri] = FeedDefsViewerState().apply {
+                                        repost = current.repost
+                                        like = null
+                                    }
+                                }
+                            }
+                        } else {
+                            val likeUri = repo.likePost(ref)
+
+                            withContext(Dispatchers.Main) {
+                                viewerStatusMap[uri] = FeedDefsViewerState().apply {
+                                    repost = current?.repost
+                                    like = likeUri
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("PaginatedViewModel", "toggleLike: error", e)
+                    // エラー時は元の状態に戻すなどの処理を実装可能
                 }
             }
         }
@@ -97,20 +179,35 @@ abstract class PaginatedListViewModel<T : HasUri> :
         val isReposted = current?.repost != null
 
         viewModelScope.launch {
-            if (isReposted) {
-                repo.unRepostPost(viewerStatusMap[uri]?.repost!!)
-                viewerStatusMap[uri] = FeedDefsViewerState().apply {
-                    like = current?.like
-                    repost = null
-                }
-            } else {
-                val repostUri = repo.repostPost(ref)
-                viewerStatusMap[uri] = FeedDefsViewerState().apply {
-                    like = current?.like
-                    repost = repostUri
+            actionMutex.withLock {
+                try {
+                    withContext(Dispatchers.IO) {
+                        if (isReposted) {
+                            current?.repost?.let { repostUri ->
+                                repo.unRepostPost(repostUri)
+
+                                withContext(Dispatchers.Main) {
+                                    viewerStatusMap[uri] = FeedDefsViewerState().apply {
+                                        like = current.like
+                                        repost = null
+                                    }
+                                }
+                            }
+                        } else {
+                            val repostUri = repo.repostPost(ref)
+
+                            withContext(Dispatchers.Main) {
+                                viewerStatusMap[uri] = FeedDefsViewerState().apply {
+                                    like = current?.like
+                                    repost = repostUri
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("PaginatedViewModel", "toggleRepost: error", e)
                 }
             }
         }
     }
-
 }

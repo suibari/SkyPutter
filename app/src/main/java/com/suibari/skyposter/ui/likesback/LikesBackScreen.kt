@@ -1,5 +1,6 @@
 package com.suibari.skyposter.ui.likesback
 
+import androidx.compose.material3.CircularProgressIndicator
 import com.suibari.skyposter.ui.main.MainViewModel
 import androidx.compose.runtime.*
 import com.suibari.skyposter.data.model.PaginatedListScreen
@@ -26,6 +27,7 @@ fun LikesBackScreen(
     PaginatedListScreen(
         items = feeds,
         isRefreshing = false,
+        isLoadingMore = viewModel.isLoadingMore,
         onRefresh = {
             viewModel.loadInitialItems(25)
         },

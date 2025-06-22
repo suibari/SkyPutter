@@ -34,6 +34,7 @@ fun NotificationListScreen(
     PaginatedListScreen(
         items = notifications,
         isRefreshing = false,
+        isLoadingMore = viewModel.isLoadingMore,
         onRefresh = {
             viewModel.fetchNow()
         },

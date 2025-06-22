@@ -17,40 +17,62 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun <T> PaginatedListScreen(
     items: List<T>,
     isRefreshing: Boolean,
+    isLoadingMore: Boolean,
     onRefresh: suspend () -> Unit,
     onLoadMore: suspend () -> Unit,
     itemKey: (T) -> Any,
     itemContent: @Composable (T) -> Unit,
 ) {
-    val refreshing = remember { mutableStateOf(isRefreshing) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // スクロール末尾で追加読み込み
+    // スクロール末尾で追加読み込み（改善版）
     LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastIndex ->
-                if (lastIndex == items.lastIndex) {
-                    coroutineScope.launch {
-                        onLoadMore()
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val visibleItemsInfo = layoutInfo.visibleItemsInfo
+            val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index
+            val totalItemsCount = layoutInfo.totalItemsCount
+
+            // 末尾から10アイテム以内に到達したときにトリガー
+            lastVisibleItemIndex != null &&
+                    totalItemsCount > 0 &&
+                    lastVisibleItemIndex >= totalItemsCount - 10
+        }
+            .collect { shouldLoadMore ->
+                if (shouldLoadMore && !isLoadingMore && !isRefreshing) {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            onLoadMore()
+                        } catch (e: Exception) {
+                            // エラーハンドリング
+                            e.printStackTrace()
+                        }
                     }
                 }
             }
     }
 
     SwipeRefresh(
-        state = rememberSwipeRefreshState(refreshing.value),
+        state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = {
-            coroutineScope.launch {
-                refreshing.value = true
-                onRefresh()
-                refreshing.value = false
+            if (!isRefreshing && !isLoadingMore) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    try {
+                        onRefresh()
+                    } catch (e: Exception) {
+                        // エラーハンドリング
+                        e.printStackTrace()
+                    }
+                }
             }
         }
     ) {
