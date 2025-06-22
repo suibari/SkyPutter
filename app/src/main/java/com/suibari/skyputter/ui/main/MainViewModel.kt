@@ -2,7 +2,6 @@ package com.suibari.skyputter.ui.main
 
 import android.content.Context
 import android.util.Log
-import com.suibari.skyputter.ui.notification.NotificationViewModel
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,7 +9,11 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.data.repository.MainRepository
+import com.suibari.skyputter.data.repository.PostResult
+import com.suibari.skyputter.data.repository.ProfileResult
+import com.suibari.skyputter.data.repository.OgImageResult
 import com.suibari.skyputter.ui.likesback.LikesBackViewModel
+import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -18,67 +21,130 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
+data class UiState(
+    val isLoading: Boolean = false,
+    val isPosting: Boolean = false,
+    val isFetchingOgImage: Boolean = false,
+    val errorMessage: String? = null,
+    val isInitialized: Boolean = false
+)
+
 class MainViewModel(
-    val repo: MainRepository,
+    private val repo: MainRepository,
     val userPostViewModel: UserPostViewModel,
     val notificationViewModel: NotificationViewModel,
     val likesBackViewModel: LikesBackViewModel,
 ) : ViewModel() {
+
+    private var _uiState = mutableStateOf(UiState())
+    val uiState: MutableState<UiState> = _uiState
+
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
+    val profile: MutableState<ActorDefsProfileViewDetailed?> = _profile
+
     var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
+        private set
     var parentPost by mutableStateOf<FeedPost?>(null)
+        private set
     private var rootPostRecord by mutableStateOf<RepoStrongRef?>(null)
 
     private val _embed = mutableStateOf<AttachedEmbed?>(null)
     val embed: MutableState<AttachedEmbed?> = _embed
-    private var isFetchingOgImage = false
-
-    var isInitialized by mutableStateOf(false)
-        private set
 
     fun initialize(context: Context) {
+        if (_uiState.value.isInitialized) return
+
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
             try {
                 Log.d("MainViewModel", "initialize: start")
 
-                _profile.value = repo.getProfile()
-                Log.d("MainViewModel", "profile loaded")
+                // プロフィール取得
+                when (val result = repo.getProfile()) {
+                    is ProfileResult.Success -> {
+                        _profile.value = result.profile
+                        Log.d("MainViewModel", "profile loaded")
+                    }
+                    is ProfileResult.Error -> {
+                        _uiState.value = _uiState.value.copy(
+                            errorMessage = result.message,
+                            isLoading = false
+                        )
+                        return@launch
+                    }
+                }
 
+                // バックグラウンド処理開始
                 notificationViewModel.startBackgroundPolling()
 
-
+                // 子ViewModelの初期化
                 Log.d("MainViewModel", "loading child view models")
                 userPostViewModel.loadInitialItemsIfNeeded()
                 notificationViewModel.loadInitialItemsIfNeeded()
                 likesBackViewModel.loadInitialItemsIfNeeded()
 
                 Log.d("MainViewModel", "initialization finished")
-                isInitialized = true
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    isInitialized = true,
+                    errorMessage = null
+                )
 
             } catch (e: Exception) {
                 Log.e("MainViewModel", "initialize error", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "初期化に失敗しました: ${e.message}"
+                )
             }
         }
     }
 
-    fun getProfile(): ActorDefsProfileViewDetailed? {
-        return _profile.value
+    fun post(postText: String, embed: AttachedEmbed?, onSuccess: () -> Unit = {}) {
+        if (_uiState.value.isPosting) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isPosting = true, errorMessage = null)
+
+            val replyRef = createReplyRef()
+
+            when (val result = repo.postText(postText, embed, replyRef)) {
+                is PostResult.Success -> {
+                    _uiState.value = _uiState.value.copy(isPosting = false)
+                    onSuccess()
+                }
+                is PostResult.Error -> {
+                    _uiState.value = _uiState.value.copy(
+                        isPosting = false,
+                        errorMessage = result.message
+                    )
+                    Log.e("MainViewModel", "post error", result.exception)
+                }
+            }
+        }
     }
 
-    fun post(postText: String, embed: AttachedEmbed?) {
+    fun fetchOgImage(url: String) {
+        if (_uiState.value.isFetchingOgImage || _embed.value != null) return
+
         viewModelScope.launch {
-            val replyRef = parentPostRecord?.let {
-                FeedPostReplyRef().apply {
-                    root = rootPostRecord
-                    parent = parentPostRecord
+            _uiState.value = _uiState.value.copy(isFetchingOgImage = true)
+
+            when (val result = repo.fetchOgImageEmbed(url)) {
+                is OgImageResult.Success -> {
+                    _embed.value = result.embed
+                }
+                is OgImageResult.Error -> {
+                    Log.e("MainViewModel", "fetchOgImage error", result.exception)
+                    // OG画像取得失敗は致命的ではないのでエラーメッセージは表示しない
+                }
+                is OgImageResult.NotFound -> {
+                    // OG画像が見つからない場合は何もしない
                 }
             }
 
-            try {
-                repo.postText(postText, embed, replyRef)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            _uiState.value = _uiState.value.copy(isFetchingOgImage = false)
         }
     }
 
@@ -102,19 +168,22 @@ class MainViewModel(
         _embed.value = null
     }
 
-    fun fetchOgImage(url: String) {
-        if (isFetchingOgImage || _embed.value != null) return
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
 
-        isFetchingOgImage = true
-        viewModelScope.launch {
-            try {
-                val embedResult = repo.fetchOgImageEmbed(url)
-                _embed.value = embedResult
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                isFetchingOgImage = false
+    private fun createReplyRef(): FeedPostReplyRef? {
+        return parentPostRecord?.let {
+            FeedPostReplyRef().apply {
+                root = rootPostRecord
+                parent = parentPostRecord
             }
         }
+    }
+
+    // 下位互換性のために残す
+    @Deprecated("Use profile property instead", ReplaceWith("profile.value"))
+    fun getProfile(): ActorDefsProfileViewDetailed? {
+        return _profile.value
     }
 }

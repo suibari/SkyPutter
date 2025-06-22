@@ -20,19 +20,42 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
+import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacet
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.util.facet.FacetUtil
 import java.net.URL
 
+sealed class PostResult {
+    object Success : PostResult()
+    data class Error(val message: String, val exception: Throwable? = null) : PostResult()
+}
+
+sealed class ProfileResult {
+    data class Success(val profile: ActorDefsProfileViewDetailed) : ProfileResult()
+    data class Error(val message: String, val exception: Throwable? = null) : ProfileResult()
+}
+
+sealed class OgImageResult {
+    data class Success(val embed: AttachedEmbed) : OgImageResult()
+    data class Error(val message: String, val exception: Throwable? = null) : OgImageResult()
+    object NotFound : OgImageResult()
+}
+
 class MainRepository {
-    suspend fun getProfile(): ActorDefsProfileViewDetailed {
-        return SessionManager.runWithAuthRetry { auth ->
-            BlueskyFactory
-                .instance(BSKY_SOCIAL.uri)
-                .actor()
-                .getProfile(
-                    ActorGetProfileRequest(auth).also { it.actor = auth.did }
-                ).data
+
+    suspend fun getProfile(): ProfileResult {
+        return try {
+            val profile = SessionManager.runWithAuthRetry { auth ->
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .actor()
+                    .getProfile(
+                        ActorGetProfileRequest(auth).also { it.actor = auth.did }
+                    ).data
+            }
+            ProfileResult.Success(profile)
+        } catch (e: Exception) {
+            ProfileResult.Error("プロフィールの取得に失敗しました", e)
         }
     }
 
@@ -40,89 +63,52 @@ class MainRepository {
         postText: String,
         embed: AttachedEmbed?,
         replyTo: FeedPostReplyRef? = null
-    ) = SessionManager.runWithAuthRetry { auth ->
-        var embedUnion: EmbedUnion? = null
+    ): PostResult {
+        return try {
+            val embedUnion = createEmbedUnion(embed)
+            val (displayText, facets) = extractTextAndFacets(postText)
 
-        if (embed?.urlString != null) {
-            // External
-            embedUnion = embed.let {
-                EmbedExternal().apply {
-                    external = EmbedExternalExternal().apply {
-                        title = embed.title ?: ""
-                        uri = embed.urlString!!
-                        thumb = uploadBlob(embed)
-                        description = embed.description ?: ""
-                    }
-                }
-            }
-        } else if (embed?.blob != null) {
-            // Images
-            embedUnion = embed.let {
-                EmbedImages().apply {
-                    images = listOf(
-                        EmbedImagesImage().apply {
-                            image = uploadBlob(embed)
-                            alt = "image from SkyPutter"
-                            aspectRatio = embed.aspectRatio ?: EmbedDefsAspectRatio().apply {
-                                width = 1
-                                height = 1
-                            }
+            SessionManager.runWithAuthRetry { auth ->
+                BlueskyFactory.instance(BSKY_SOCIAL.uri)
+                    .feed()
+                    .post(
+                        FeedPostRequest(auth).apply {
+                            this.text = displayText
+                            this.embed = embedUnion
+                            this.reply = replyTo
+                            this.facets = facets
                         }
                     )
-                }
             }
-        }
-
-        // Facets判別
-        val facetlist = FacetUtil.extractFacets(postText)
-        val displayText = facetlist.displayText()
-        val facets = facetlist.richTextFacets(mutableMapOf())
-
-        BlueskyFactory.instance(BSKY_SOCIAL.uri)
-            .feed()
-            .post(
-                FeedPostRequest(auth).apply {
-                    this.text = displayText
-                    this.embed = embedUnion
-                    this.reply = replyTo
-                    this.facets = facets
-                }
-            )
-    }
-
-    private suspend fun uploadBlob(embed: AttachedEmbed): Blob? {
-        if (embed.blob != null && embed.filename != null) {
-            return SessionManager.runWithAuthRetry { auth ->
-                val response = BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
-                    .repo()
-                    .uploadBlob(
-                        RepoUploadBlobRequest(
-                            auth = auth,
-                            bytes = embed.blob!!,
-                            name = embed.filename!!,
-                            contentType = embed.contentType!!
-                        )
-                    )
-                response.data.blob
-            }
-        } else {
-            return null
+            PostResult.Success
+        } catch (e: Exception) {
+            PostResult.Error("投稿に失敗しました", e)
         }
     }
 
-    suspend fun fetchOgImageEmbed(url: String): AttachedEmbed? = withContext(Dispatchers.IO) {
+    /**
+     * URL入力時、URLからOGP情報を取得しEmbedセット
+     */
+    suspend fun fetchOgImageEmbed(url: String): OgImageResult = withContext(Dispatchers.IO) {
         try {
             val doc = Jsoup.connect(url).get()
             val ogImageRaw = doc.select("meta[property=og:image]").attr("content")
             val ogTitle = doc.select("meta[property=og:title]").attr("content")
-            val ogImage = URL(URL(url), ogImageRaw).toString()
+            val ogDescription = doc.select("meta[property=og:description]").attr("content")
 
-            val (imageData, contentType) = getByteArrayFromUrl(ogImage) ?: return@withContext null
+            if (ogImageRaw.isEmpty()) {
+                return@withContext OgImageResult.NotFound
+            }
+
+            val ogImage = URL(URL(url), ogImageRaw).toString()
+            val (imageData, contentType) = getByteArrayFromUrl(ogImage)
+                ?: return@withContext OgImageResult.Error("画像の取得に失敗しました")
+
             val ext = extensionFromContentType(contentType)
 
-            AttachedEmbed(
-                title = ogTitle,
+            val embed = AttachedEmbed(
+                title = ogTitle.takeIf { it.isNotEmpty() },
+                description = ogDescription.takeIf { it.isNotEmpty() },
                 filename = "ogp.$ext",
                 urlString = url,
                 imageUriString = ogImage,
@@ -130,8 +116,75 @@ class MainRepository {
                 contentType = contentType,
                 aspectRatio = null
             )
+
+            OgImageResult.Success(embed)
         } catch (e: Exception) {
-            e.printStackTrace()
+            OgImageResult.Error("OG画像の取得に失敗しました", e)
+        }
+    }
+
+    private suspend fun createEmbedUnion(embed: AttachedEmbed?): EmbedUnion? {
+        return when {
+            embed?.urlString != null -> createExternalEmbed(embed)
+            embed?.blob != null -> createImageEmbed(embed)
+            else -> null
+        }
+    }
+
+    private suspend fun createExternalEmbed(embed: AttachedEmbed): EmbedExternal {
+        return EmbedExternal().apply {
+            external = EmbedExternalExternal().apply {
+                title = embed.title ?: ""
+                uri = embed.urlString!!
+                thumb = uploadBlob(embed)
+                description = embed.description ?: ""
+            }
+        }
+    }
+
+    private suspend fun createImageEmbed(embed: AttachedEmbed): EmbedImages {
+        return EmbedImages().apply {
+            images = listOf(
+                EmbedImagesImage().apply {
+                    image = uploadBlob(embed)
+                    alt = "image from SkyPutter"
+                    aspectRatio = embed.aspectRatio ?: EmbedDefsAspectRatio().apply {
+                        width = 1
+                        height = 1
+                    }
+                }
+            )
+        }
+    }
+
+    private fun extractTextAndFacets(postText: String): Pair<String, List<RichtextFacet>> {
+        val facetlist = FacetUtil.extractFacets(postText)
+        val displayText = facetlist.displayText()
+        val facets = facetlist.richTextFacets(mutableMapOf())
+        return displayText to facets
+    }
+
+    private suspend fun uploadBlob(embed: AttachedEmbed): Blob? {
+        return if (embed.blob != null && embed.filename != null) {
+            try {
+                SessionManager.runWithAuthRetry { auth ->
+                    val response = BlueskyFactory
+                        .instance(BSKY_SOCIAL.uri)
+                        .repo()
+                        .uploadBlob(
+                            RepoUploadBlobRequest(
+                                auth = auth,
+                                bytes = embed.blob!!,
+                                name = embed.filename!!,
+                                contentType = embed.contentType!!
+                            )
+                        )
+                    response.data.blob
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } else {
             null
         }
     }
@@ -148,9 +201,10 @@ class MainRepository {
                 val blob = response.body?.bytes()
                 val contentType = response.body?.contentType()?.toString() ?: "image/jpeg"
                 Pair(blob, contentType)
-            } else null
+            } else {
+                null
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
