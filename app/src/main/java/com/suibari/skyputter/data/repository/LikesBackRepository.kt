@@ -8,6 +8,7 @@ import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetFeedRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 class LikesBackRepository: BskyPostActionRepository() {
     suspend fun fetchLikesBack (limit: Int, cursor: String?): Pair<List<DisplayFeed>, String?> {
@@ -29,7 +30,7 @@ class LikesBackRepository: BskyPostActionRepository() {
 
             val displayFeeds = feeds.map { feed ->
                 DisplayFeed(
-                    raw = feed,
+                     raw = feed,
                 )
             }
 

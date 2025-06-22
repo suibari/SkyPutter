@@ -9,11 +9,16 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteRepostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
+import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 open class BskyPostActionRepository : PostActionRepository {
+
+    // レコードキャッシュを共通化
+    private val recordCache = mutableMapOf<String, FeedPost>()
 
     /**
      * limitは25件以下でないとAPIエラーとなる!!
@@ -37,6 +42,55 @@ open class BskyPostActionRepository : PostActionRepository {
         } else {
             return emptyMap()
         }
+    }
+
+    /**
+     * レコードを取得（キャッシュ機能付き）
+     */
+    protected suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
+        return try {
+            refRecord?.let { ref ->
+                val uri = ref.uri
+                recordCache[uri] ?: run {
+                    val (repo, collection, rkey) = BskyUtil.parseAtUri(uri)
+                        ?: return@let null
+                    val record = SessionManager.runWithAuthRetry { auth ->
+                        BlueskyFactory
+                            .instance(BSKY_SOCIAL.uri)
+                            .repo()
+                            .getRecord(
+                                RepoGetRecordRequest(repo, collection, rkey)
+                            )
+                    }
+                    val feedPost = record.data.value.asFeedPost
+                    feedPost?.also { recordCache[uri] = it }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("getRecord", "Record not found", e)
+            return null
+        }
+    }
+
+    /**
+     * レコードキャッシュをクリア
+     */
+    protected fun clearRecordCache() {
+        recordCache.clear()
+    }
+
+    /**
+     * 特定のURIのレコードキャッシュを削除
+     */
+    protected fun removeFromRecordCache(uri: String) {
+        recordCache.remove(uri)
+    }
+
+    /**
+     * レコードキャッシュのサイズを取得（デバッグ用）
+     */
+    protected fun getRecordCacheSize(): Int {
+        return recordCache.size
     }
 
     override suspend fun likePost(ref: RepoStrongRef): String {

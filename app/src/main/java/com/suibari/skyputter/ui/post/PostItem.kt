@@ -69,6 +69,8 @@ fun PostItem(
             )
 
             // 親ポスト欄
+            val replied = feed.raw.reply?.parent?.record?.asFeedPost
+            DisplayParentPost(replied?.text)
             val quoted = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost
             DisplayParentPost(quoted?.text)
         }

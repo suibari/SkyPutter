@@ -8,12 +8,9 @@ import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationListNot
 import androidx.core.content.edit
 import com.suibari.skyputter.data.model.BskyPostActionRepository
 import com.suibari.skyputter.ui.type.DisplayNotification
-import com.suibari.skyputter.util.BskyUtil
 import com.suibari.skyputter.util.SessionManager
-import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
-import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import java.time.Instant
 
 class NotificationRepository (
@@ -23,7 +20,6 @@ class NotificationRepository (
     private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null)
     private var lastPolledNotifIndexedAt: String? = prefs.getString(KEY_LAST_POLLED, null)
     private var latestNotifIndexedAt: String? = null
-    private val recordCache = mutableMapOf<String, FeedPost>()
 
     // 通知済みCIDを永続化
     private val notifiedCids: MutableSet<String> = prefs.getStringSet(KEY_NOTIFIED_CIDS, emptySet())?.toMutableSet() ?: mutableSetOf()
@@ -78,6 +74,8 @@ class NotificationRepository (
                 ?: notif.record.asFeedRepost?.subject
                 ?: notif.record.asFeedLike?.subject
             val rootPostRecord = notif.record.asFeedPost?.reply?.root
+
+            // 共通クラスのgetRecordメソッドを使用
             val parentPost: FeedPost? = getRecord(parentPostRecord)
 
             val viewer = viewerStatusMap[notif.uri]
@@ -186,6 +184,13 @@ class NotificationRepository (
     }
 
     /**
+     * レコードキャッシュをクリア（必要に応じて使用）
+     */
+    fun clearCache() {
+        clearRecordCache()
+    }
+
+    /**
      * 初回起動時刻をリセット（デバッグ用）
      */
     fun resetFirstLaunchTime() {
@@ -203,32 +208,8 @@ class NotificationRepository (
             "firstLaunchTime" to appFirstLaunchTime,
             "lastPolledTime" to lastPolledNotifIndexedAt,
             "lastSeenTime" to lastSeenNotifIndexedAt,
-            "notifiedCount" to notifiedCids.size.toString()
+            "notifiedCount" to notifiedCids.size.toString(),
+            "recordCacheSize" to getRecordCacheSize().toString()
         )
-    }
-
-    private suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
-        return try {
-            refRecord?.let { ref ->
-                val uri = ref.uri
-                recordCache[uri] ?: run {
-                    val (repo, collection, rkey) = BskyUtil.parseAtUri(uri)
-                        ?: return@let null
-                    val record = SessionManager.runWithAuthRetry { auth ->
-                        BlueskyFactory
-                            .instance(BSKY_SOCIAL.uri)
-                            .repo()
-                            .getRecord(
-                                RepoGetRecordRequest(repo, collection, rkey)
-                            )
-                    }
-                    val feedPost = record.data.value.asFeedPost
-                    feedPost?.also { recordCache[uri] = it }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w("getRecord", "Record not found", e)
-            return null
-        }
     }
 }

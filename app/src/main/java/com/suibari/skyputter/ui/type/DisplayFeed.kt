@@ -1,6 +1,7 @@
 package com.suibari.skyputter.ui.type
 
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsFeedViewPost
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 interface HasUri {
     val uri: String?
