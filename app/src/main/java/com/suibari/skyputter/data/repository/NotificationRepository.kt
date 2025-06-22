@@ -14,23 +14,39 @@ import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
+import java.time.Instant
 
 class NotificationRepository (
     val context: Context
 ): BskyPostActionRepository() {
     private val prefs: SharedPreferences = context.getSharedPreferences("notifications", Context.MODE_PRIVATE)
     private var lastSeenNotifIndexedAt: String? = prefs.getString(KEY_LAST_SEEN, null)
-    private var lastPolledNotifIndexedAt: String? = prefs.getString(KEY_LAST_POLLED, null) // ポーリングで最後に取得した通知の時刻
+    private var lastPolledNotifIndexedAt: String? = prefs.getString(KEY_LAST_POLLED, null)
     private var latestNotifIndexedAt: String? = null
     private val recordCache = mutableMapOf<String, FeedPost>()
 
     // 通知済みCIDを永続化
     private val notifiedCids: MutableSet<String> = prefs.getStringSet(KEY_NOTIFIED_CIDS, emptySet())?.toMutableSet() ?: mutableSetOf()
 
+    // アプリの初回起動時刻を記録
+    private val appFirstLaunchTime: String by lazy {
+        val saved = prefs.getString(KEY_FIRST_LAUNCH, null)
+        if (saved == null) {
+            val currentTime = Instant.now().toString()
+            prefs.edit {
+                putString(KEY_FIRST_LAUNCH, currentTime)
+            }
+            currentTime
+        } else {
+            saved
+        }
+    }
+
     companion object {
         private const val KEY_LAST_SEEN = "last_seen_notif_indexed_at"
         private const val KEY_LAST_POLLED = "last_polled_notif_indexed_at"
         private const val KEY_NOTIFIED_CIDS = "notified_cids"
+        private const val KEY_FIRST_LAUNCH = "app_first_launch_time"
         private const val MAX_NOTIFIED_CIDS = 1000
     }
 
@@ -84,22 +100,24 @@ class NotificationRepository (
 
     /**
      * バックグラウンド通知用：未通知の新しい通知のみを取得
+     * 初回起動時刻以降の通知のみを対象にする
      */
     suspend fun fetchNewNotificationsForPolling(): List<DisplayNotification> {
         val allNewNotifs = mutableListOf<DisplayNotification>()
         var cursor: String? = null
         var hasMore = true
 
-        // lastPolledNotifIndexedAt以降の通知をすべて取得
+        // 初回起動時刻を基準時刻として使用
+        val baselineTime = lastPolledNotifIndexedAt ?: appFirstLaunchTime
+
+        Log.d("NotificationRepository", "Fetching notifications since: $baselineTime")
+
+        // baselineTime以降の通知をすべて取得
         while (hasMore) {
             val (notifs, newCursor) = fetchNotifications(50, cursor)
 
-            // lastPolledNotifIndexedAt以降の通知のみをフィルタ
-            val newNotifs = if (lastPolledNotifIndexedAt != null) {
-                notifs.filter { it.raw.indexedAt > lastPolledNotifIndexedAt!! }
-            } else {
-                notifs
-            }
+            // baselineTime以降の通知のみをフィルタ
+            val newNotifs = notifs.filter { it.raw.indexedAt > baselineTime }
 
             if (newNotifs.isEmpty()) {
                 hasMore = false
@@ -121,6 +139,8 @@ class NotificationRepository (
 
         // 未通知のもののみをフィルタ
         val unnotifiedNotifs = allNewNotifs.filter { it.raw.cid !in notifiedCids }
+
+        Log.d("NotificationRepository", "Found ${allNewNotifs.size} new notifications, ${unnotifiedNotifs.size} unnotified")
 
         // 最新の通知時刻を更新
         if (allNewNotifs.isNotEmpty()) {
@@ -152,6 +172,8 @@ class NotificationRepository (
         prefs.edit {
             putStringSet(KEY_NOTIFIED_CIDS, notifiedCids)
         }
+
+        Log.d("NotificationRepository", "Marked ${notifs.size} notifications as notified")
     }
 
     fun markAllAsRead() {
@@ -161,6 +183,28 @@ class NotificationRepository (
                 putString(KEY_LAST_SEEN, it)
             }
         }
+    }
+
+    /**
+     * 初回起動時刻をリセット（デバッグ用）
+     */
+    fun resetFirstLaunchTime() {
+        prefs.edit {
+            remove(KEY_FIRST_LAUNCH)
+            remove(KEY_LAST_POLLED)
+        }
+    }
+
+    /**
+     * 通知設定の状態を取得（デバッグ用）
+     */
+    fun getNotificationStatus(): Map<String, String?> {
+        return mapOf(
+            "firstLaunchTime" to appFirstLaunchTime,
+            "lastPolledTime" to lastPolledNotifIndexedAt,
+            "lastSeenTime" to lastSeenNotifIndexedAt,
+            "notifiedCount" to notifiedCids.size.toString()
+        )
     }
 
     private suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
