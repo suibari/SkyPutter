@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.suibari.skyposter"
+    namespace = "com.suibari.skyputter"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.suibari.skyposter"
+        applicationId = "com.suibari.skyputter"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
