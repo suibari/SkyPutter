@@ -49,6 +49,7 @@ class MainViewModel(
 
                 notificationViewModel.startBackgroundPolling()
 
+
                 Log.d("MainViewModel", "loading child view models")
                 userPostViewModel.loadInitialItemsIfNeeded()
                 notificationViewModel.loadInitialItemsIfNeeded()

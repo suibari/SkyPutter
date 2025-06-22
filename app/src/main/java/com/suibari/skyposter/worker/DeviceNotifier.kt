@@ -31,17 +31,21 @@ class DeviceNotifier(private val context: Context) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        val latest = notifs.first()
-        if (latest.isNew) {
+        // 新しい通知のみをフィルタリング
+        val newNotifs = notifs.filter { it.isNew }
+
+        // 各新しい通知に対して個別の通知を作成
+        newNotifs.forEachIndexed { index, notif ->
+            val replytext = notif.raw.record.asFeedPost?.text ?: ""
             val notification = NotificationCompat.Builder(context, channelId)
-                .setContentTitle("SkyPoster")
-                .setContentText("${latest.raw.author.handle} から ${latest.raw.reason}")
+                .setContentTitle(notif.raw.author.handle)
+                .setContentText("${notif.raw.reason} $replytext from ${notif.raw.author.handle}")
                 .setSmallIcon(R.drawable.ic_notification)
                 .setAutoCancel(true)
-                .setNumber(notifs.size)
                 .build()
 
-            notificationManager.notify(1, notification)
+            // 各通知に異なるIDを使用（重複を避けるため）
+            notificationManager.notify(index + 1, notification)
         }
     }
 }
