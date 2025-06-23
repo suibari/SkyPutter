@@ -20,6 +20,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
+import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
@@ -32,6 +33,7 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 fun MainScreen(
     application: SkyPutterApp,
     viewModel: MainViewModel,
+    notificationViewModel: NotificationViewModel,
     draftViewModel: DraftViewModel,
     initialText: String = "",
     onLogout: () -> Unit,
@@ -119,7 +121,15 @@ fun MainScreen(
                         Icon(Icons.Default.Favorite, contentDescription = "LikesBack")
                     }
                     IconButton(onClick = onOpenNotification) {
-                        Icon(Icons.Default.Notifications, contentDescription = "通知")
+                        BadgedBox(
+                            badge = {
+                                if (notificationViewModel.items.any { it.isNew }) {
+                                    Badge()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = "通知")
+                        }
                     }
                 }
             )

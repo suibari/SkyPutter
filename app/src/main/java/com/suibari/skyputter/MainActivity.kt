@@ -194,6 +194,7 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 application = application as SkyPutterApp,
                                 viewModel = mainVM,
+                                notificationViewModel = viewModelContainer.notificationViewModel!!,
                                 draftViewModel = viewModelContainer.draftViewModel!!,
                                 initialText = selectedDraftText,
                                 onLogout = {
