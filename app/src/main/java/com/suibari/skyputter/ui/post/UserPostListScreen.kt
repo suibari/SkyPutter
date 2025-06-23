@@ -12,6 +12,7 @@ fun UserPostListScreen(
 
     PaginatedListScreen(
         items = feeds,
+        viewModel = viewModel,
         isRefreshing = false,
         isLoadingMore = viewModel.isLoadingMore,
         onRefresh = {

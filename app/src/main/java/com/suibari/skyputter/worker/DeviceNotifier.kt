@@ -132,12 +132,23 @@ class DeviceNotifier(private val context: Context) {
             }
         }
 
+        // URI をIntentに埋め込む
+        val detailIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("postUri", notif.raw.uri) // 通知選択時にMainにURIを渡すため
+        }
+
+        val detailPendingIntent = PendingIntent.getActivity(
+            context, notificationId, detailIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = NotificationCompat.Builder(context, channelId)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(detailPendingIntent)
             .setWhen(System.currentTimeMillis()) // タイムスタンプを設定
             .setShowWhen(true)
             .setStyle(if (text.isNotEmpty()) NotificationCompat.BigTextStyle().bigText(text) else null)

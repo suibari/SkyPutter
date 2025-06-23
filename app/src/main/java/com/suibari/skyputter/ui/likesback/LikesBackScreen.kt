@@ -25,6 +25,7 @@ fun LikesBackScreen(
 
     PaginatedListScreen(
         items = feeds,
+        viewModel = viewModel,
         isRefreshing = false,
         isLoadingMore = viewModel.isLoadingMore,
         onRefresh = {

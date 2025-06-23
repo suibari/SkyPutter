@@ -15,12 +15,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.suibari.skyputter.ui.type.HasUri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 @Composable
-fun <T> PaginatedListScreen(
+fun <T: HasUri> PaginatedListScreen(
     items: List<T>,
+    viewModel: PaginatedListViewModel<T>,
     isRefreshing: Boolean,
     isLoadingMore: Boolean,
     onRefresh: suspend () -> Unit,
@@ -30,6 +33,11 @@ fun <T> PaginatedListScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    // フィード表示時、再読み込みする
+    LaunchedEffect(Unit) {
+        viewModel.loadInitialItems()
+    }
 
     // スクロール末尾で追加読み込み（改善版）
     LaunchedEffect(listState) {
@@ -56,6 +64,27 @@ fun <T> PaginatedListScreen(
                     }
                 }
             }
+    }
+
+    // URI指定で強制スクロール
+    LaunchedEffect(viewModel.targetUri, viewModel.isRefreshing) {
+        val uri = viewModel.targetUri
+        if (uri != null) {
+            // isRefreshingがfalse（ロード完了）になるのを待つ
+            snapshotFlow { viewModel.isRefreshing }
+                .collect { refreshing ->
+                    if (!refreshing) {
+                        val index = viewModel.items.indexOfFirst { it.uri == uri }
+                        if (index != -1) {
+                            listState.scrollToItem(index)
+                        } else {
+                            listState.scrollToItem(0)
+                        }
+                        viewModel.targetUri = null
+                        this.cancel() // collect終了
+                    }
+                }
+        }
     }
 
     SwipeRefresh(

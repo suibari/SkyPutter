@@ -51,6 +51,9 @@ class MainViewModel(
     private val _embed = mutableStateOf<AttachedEmbed?>(null)
     val embed: MutableState<AttachedEmbed?> = _embed
 
+    // デバイス通知からの遷移用
+    val navigateToNotification = mutableStateOf(false)
+
     fun initialize(context: Context) {
         if (_uiState.value.isInitialized) return
 
@@ -179,6 +182,10 @@ class MainViewModel(
                 parent = parentPostRecord
             }
         }
+    }
+
+    fun onNavigatedToNotification() {
+        navigateToNotification.value = false
     }
 
     // 下位互換性のために残す

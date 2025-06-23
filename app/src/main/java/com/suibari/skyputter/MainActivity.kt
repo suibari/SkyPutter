@@ -2,6 +2,7 @@ package com.suibari.skyputter
 
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -338,6 +339,23 @@ class MainActivity : ComponentActivity() {
                     }
                     else -> LoadingScreen()
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+
+        val postUri = intent?.getStringExtra("postUri")
+        if (postUri != null) {
+            Log.d("MainActivity", "Received postUri from notification: $postUri")
+
+            // 通知画面にナビゲート & URI を渡す
+            lifecycleScope.launch(Dispatchers.Main) {
+                viewModelContainer.notificationViewModel?.targetUri = postUri
+
+                // 今回は MainViewModel 経由で MainScreen → 通知画面に遷移させる方法が自然
+                viewModelContainer.mainViewModel?.navigateToNotification?.value = true
             }
         }
     }

@@ -52,6 +52,14 @@ fun MainScreen(
 
     val urlRegex = remember { Regex("""https?://\S+""") }
 
+    // デバイス通知からの遷移イベント監視
+    LaunchedEffect(viewModel.navigateToNotification.value) {
+        if (viewModel.navigateToNotification.value) {
+            onOpenNotification() // ← navController.navigate(Screen.NotificationList.route)
+            viewModel.onNavigatedToNotification()
+        }
+    }
+
     // 下書きから選択されたテキストを設定
     LaunchedEffect(initialText) {
         if (initialText.isNotEmpty()) {

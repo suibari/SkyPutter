@@ -1,9 +1,11 @@
 package com.suibari.skyputter.data.model
 
 import android.util.Log
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.ui.type.HasUri
@@ -39,6 +41,9 @@ abstract class PaginatedListViewModel<T : HasUri> : ViewModel() {
     // 並行実行制御用のMutex
     private val loadMutex = Mutex()
     private val actionMutex = Mutex()
+
+    // 強制スクロール用のターゲットURI
+    var targetUri: String? by mutableStateOf(null)
 
     abstract suspend fun fetchItems(limit: Int, cursor: String? = null): Pair<List<T>, String?>
 
