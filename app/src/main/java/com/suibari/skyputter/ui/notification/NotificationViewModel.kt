@@ -31,13 +31,30 @@ class NotificationViewModel(
 
     /** 手動フェッチ(未読を既読にしてリスト更新) */
     suspend fun fetchNow() {
+        // 先に既読マークを更新
         repo.markAllAsRead()
+
+        // 新しいデータを取得（この時点でisNewはfalseになるはず）
         val (newNotifs, newCursor) = repo.fetchNotifications(limit = 15)
-        _items.clear()
-        _items.addAll(newNotifs)
+
+        // リストに追加
         updateViewerStatus(newNotifs)
         cursor = newCursor
+
+        // 念のため、明示的にすべてのアイテムのisNewをfalseに設定
+        val updatedItems = _items.map { notification ->
+            if (notification.isNew) {
+                notification.copy(isNew = false)
+            } else {
+                notification
+            }
+        }
+
+        // リストを更新
+        _items.clear()
+        _items.addAll(updatedItems)
     }
+
 
     /**
      * アプリがフォアグラウンドの時の即座通知用
