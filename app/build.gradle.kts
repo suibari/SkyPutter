@@ -78,6 +78,9 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.6.1")
     implementation("org.jsoup:jsoup:1.17.2")
 
+    // 下書き機能
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // === 1分間隔通知のための追加依存関係 ===
 
     // フォアグラウンドサービス用

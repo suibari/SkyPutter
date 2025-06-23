@@ -20,6 +20,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
+import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
 import kotlinx.coroutines.launch
@@ -31,10 +32,14 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 fun MainScreen(
     application: SkyPutterApp,
     viewModel: MainViewModel,
+    draftViewModel: DraftViewModel,
+    initialText: String = "",
     onLogout: () -> Unit,
     onOpenNotification: () -> Unit,
     onOpenUserPost: () -> Unit,
     onOpenLikesBack: () -> Unit,
+    onOpenDraft: () -> Unit,
+    onDraftTextCleared: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -44,6 +49,14 @@ fun MainScreen(
     val embed by viewModel.embed
 
     val urlRegex = remember { Regex("""https?://\S+""") }
+
+    // 下書きから選択されたテキストを設定
+    LaunchedEffect(initialText) {
+        if (initialText.isNotEmpty()) {
+            postText = initialText
+            onDraftTextCleared() // テキスト設定後にクリア
+        }
+    }
 
     // 初期化処理
     LaunchedEffect(Unit) {
@@ -121,6 +134,19 @@ fun MainScreen(
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
+
+                // 下書きボタンを追加
+                DraftButton(
+                    postText = postText,
+                    viewModel = draftViewModel,
+                    onOpenDraft = onOpenDraft,
+                    onDraftSaved = {
+                        // 下書き保存成功時、テキストクリア
+                        postText = ""
+                    }
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
 
                 PostButton(
                     isPosting = uiState.isPosting,
@@ -223,6 +249,41 @@ private fun ProfileMenu(
 }
 
 @Composable
+private fun DraftButton(
+    postText: String,
+    viewModel: DraftViewModel,
+    onOpenDraft: () -> Unit,
+    onDraftSaved: () -> Unit,
+) {
+    val hasDrafts = remember { mutableStateOf(viewModel.hasDrafts()) }
+    val hasText = postText.isNotEmpty()
+
+    Button(
+        onClick = {
+            if (hasText) {
+                // 下書き保存
+                viewModel.saveDraft(postText)
+                hasDrafts.value = true
+                onDraftSaved()
+            } else {
+                // 下書き画面を開く
+                onOpenDraft()
+            }
+        },
+        enabled = hasText || hasDrafts.value,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = Color.Gray
+        )
+    ) {
+        Text(
+            text = if (hasText) "下書き保存" else "下書き",
+//            color = if (hasText || hasDrafts.value) Color.White else Color.Gray
+        )
+    }
+}
+
+@Composable
 private fun PostButton(
     isPosting: Boolean,
     enabled: Boolean,
@@ -230,7 +291,11 @@ private fun PostButton(
 ) {
     Button(
         onClick = onClick,
-        enabled = enabled
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors (
+            containerColor = MaterialTheme.colorScheme.primary,
+            disabledContainerColor = Color.Gray
+        )
     ) {
         if (isPosting) {
             Row(verticalAlignment = Alignment.CenterVertically) {

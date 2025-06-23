@@ -14,6 +14,7 @@ import com.suibari.skyputter.data.repository.LikesBackRepository
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.NotificationRepoProvider
 import com.suibari.skyputter.data.repository.UserPostRepository
+import com.suibari.skyputter.ui.draft.DraftScreen
 import com.suibari.skyputter.ui.likesback.LikesBackScreen
 import com.suibari.skyputter.ui.likesback.LikesBackViewModel
 import com.suibari.skyputter.ui.loading.LoadingScreen
@@ -24,6 +25,7 @@ import com.suibari.skyputter.ui.notification.NotificationListScreen
 import com.suibari.skyputter.ui.post.UserPostListScreen
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import com.suibari.skyputter.ui.theme.SkyPutterTheme
+import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.worker.DeviceNotifier
 import kotlinx.coroutines.Dispatchers
@@ -130,6 +132,9 @@ class MainActivity : ComponentActivity() {
     ) {
         val navController = rememberNavController()
 
+        // 下書きテキスト状態
+        var selectedDraftText by remember { mutableStateOf("") }
+
         // 初期化状態を監視
         val initState = viewModelContainer.initializationState
 
@@ -189,6 +194,8 @@ class MainActivity : ComponentActivity() {
                             MainScreen(
                                 application = application as SkyPutterApp,
                                 viewModel = mainVM,
+                                draftViewModel = viewModelContainer.draftViewModel!!,
+                                initialText = selectedDraftText,
                                 onLogout = {
                                     lifecycleScope.launch(Dispatchers.IO) {
                                         SessionManager.clearSession()
@@ -208,7 +215,14 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenLikesBack = {
                                     navController.navigate(Screen.LikesBack.route)
-                                }
+                                },
+                                onOpenDraft = {
+                                    navController.navigate(Screen.Draft.route)
+                                },
+                                onDraftTextCleared = {
+                                    // 下書きテキストをクリア
+                                    selectedDraftText = ""
+                                },
                             )
                         } ?: run {
                             Log.d("MainActivity", "MainViewModel is null, showing loading")
@@ -290,6 +304,40 @@ class MainActivity : ComponentActivity() {
                     else -> LoadingScreen()
                 }
             }
+
+            composable(Screen.Draft.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        val draftVM = viewModelContainer.draftViewModel
+
+                        if (draftVM != null) {
+                            DraftScreen(
+                                draftViewModel = draftVM,
+                                onBack = {
+                                    navController.popBackStack()
+                                },
+                                onDraftSelected = { text, draftId ->
+                                    selectedDraftText = text // 先に更新
+
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        try {
+                                            draftVM.deleteDraft(draftId)
+                                        } catch (e: Exception) {
+                                            Log.e("MainActivity", "Failed to delete draft", e)
+                                        }
+
+                                        withContext(Dispatchers.Main) {
+                                            // ここでpopBackStack() すると2重呼び出しで画面が真っ白になる
+                                            navController.navigate("main")
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                    else -> LoadingScreen()
+                }
+            }
         }
     }
 }
@@ -307,6 +355,8 @@ class ViewModelContainer(private val context: Context) {
     var userPostViewModel: UserPostViewModel? by mutableStateOf(null)
         private set
     var likesBackViewModel: LikesBackViewModel? by mutableStateOf(null)
+        private set
+    var draftViewModel: DraftViewModel? by mutableStateOf(null)
         private set
     var mainViewModel: MainViewModel? by mutableStateOf(null)
         private set
@@ -357,6 +407,7 @@ class ViewModelContainer(private val context: Context) {
 
                     userPostViewModel = UserPostViewModel(userPostRepo)
                     likesBackViewModel = LikesBackViewModel(likesbackRepo)
+                    draftViewModel = DraftViewModel(context)
 
                     mainViewModel = MainViewModel(
                         repo = mainRepo,

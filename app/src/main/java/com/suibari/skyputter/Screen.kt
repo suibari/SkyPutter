@@ -8,4 +8,5 @@ sealed class Screen(val route: String) {
     object NotificationList : Screen("notification_list")
     object UserPost : Screen("user_post")
     object LikesBack : Screen("likes_back")
+    object Draft: Screen("draft")
 }
