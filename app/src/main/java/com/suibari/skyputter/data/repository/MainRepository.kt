@@ -1,5 +1,6 @@
 package com.suibari.skyputter.data.repository
 
+import android.os.Build
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +25,7 @@ import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacet
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.util.facet.FacetUtil
 import java.net.URL
+import java.util.Locale
 
 sealed class PostResult {
     object Success : PostResult()
@@ -77,6 +79,7 @@ class MainRepository {
                             this.embed = embedUnion
                             this.reply = replyTo
                             this.facets = facets
+                            this.langs = listOf(Locale.getDefault().language)
                         }
                     )
             }
