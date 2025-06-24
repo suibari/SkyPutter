@@ -1,10 +1,13 @@
 package com.suibari.skyputter.ui.post
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -49,48 +52,57 @@ fun PostItem(
 
     val video: EmbedVideoView? = feed.raw.post.embed?.asVideo
 
-    Box (Modifier.itemPadding) {
-        Row {
-            // ヘッダー
-            DisplayHeader(
-                avatarUrl = feed.raw.post.author?.avatar,
-            )
-
-            Spacer (Modifier.spacePadding)
-
-            // メインコンテンツ
-            Column {
-                DisplayContent (
-                    text = record.text,
-                    authorName = feed.raw.post.author?.displayName,
-                    images = images,
-                    video = video,
-                    date = record.createdAt,
+    // 2段階boxとし、1つ目のboxで背景を設定、2つ目のboxでコンテンツ描画
+    // これによりスワイプ削除をうまく機能させる
+    Box (Modifier
+        .background(MaterialTheme.colorScheme.background)
+        .fillMaxSize()
+    ) {
+        Box (Modifier
+            .itemPadding
+        ) {
+            Row {
+                // ヘッダー
+                DisplayHeader(
+                    avatarUrl = feed.raw.post.author?.avatar,
                 )
 
-                DisplayActions(
-                    isMyPost = isMyPost,
-                    isLiked = isLiked,
-                    isReposted = isReposted,
-                    subjectRef = subjectRef,
-                    rootRef = rootRef,
-                    feed = record,
-                    author = ActorDefsProfileView(), // 現状自分のポストのみ表示なので暫定措置
-                    onReply = onReply,
-                    onLike = onLike,
-                    onRepost = onRepost
-                )
+                Spacer (Modifier.spacePadding)
 
-                // 返信
-                DisplayParentPost(
-                    authorName = feed.raw.reply?.parent?.author?.displayName,
-                    record = feed.raw.reply?.parent?.record?.asFeedPost,
-                )
-                // 引用
-                DisplayParentPost(
-                    authorName = feed.raw.post.embed?.asRecord?.record?.asRecord?.author?.displayName,
-                    record = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost,
-                )
+                // メインコンテンツ
+                Column {
+                    DisplayContent (
+                        text = record.text,
+                        authorName = feed.raw.post.author?.displayName,
+                        images = images,
+                        video = video,
+                        date = record.createdAt,
+                    )
+
+                    DisplayActions(
+                        isMyPost = isMyPost,
+                        isLiked = isLiked,
+                        isReposted = isReposted,
+                        subjectRef = subjectRef,
+                        rootRef = rootRef,
+                        feed = record,
+                        author = ActorDefsProfileView(), // 現状自分のポストのみ表示なので暫定措置
+                        onReply = onReply,
+                        onLike = onLike,
+                        onRepost = onRepost
+                    )
+
+                    // 返信
+                    DisplayParentPost(
+                        authorName = feed.raw.reply?.parent?.author?.displayName,
+                        record = feed.raw.reply?.parent?.record?.asFeedPost,
+                    )
+                    // 引用
+                    DisplayParentPost(
+                        authorName = feed.raw.post.embed?.asRecord?.record?.asRecord?.author?.displayName,
+                        record = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost,
+                    )
+                }
             }
         }
     }

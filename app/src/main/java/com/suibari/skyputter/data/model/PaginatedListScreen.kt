@@ -34,7 +34,7 @@ fun <T: HasUri> PaginatedListScreen(
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // フィード表示時、再読み込みする
+    // フィード表示時、再読み込みする: 通知画面を直接呼び出したとき対策
     LaunchedEffect(Unit) {
         viewModel.loadInitialItems()
     }

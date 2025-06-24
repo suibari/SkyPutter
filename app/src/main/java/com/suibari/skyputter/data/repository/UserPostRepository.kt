@@ -6,6 +6,7 @@ import com.suibari.skyputter.ui.type.DisplayFeed
 import com.suibari.skyputter.util.SessionManager
 import work.socialhub.kbsky.ATProtocolException
 import work.socialhub.kbsky.BlueskyFactory
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeletePostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
@@ -41,6 +42,18 @@ class UserPostRepository: BskyPostActionRepository() {
         } catch (e: ATProtocolException) {
             Log.e("UserPostRepository", "fetch error", e)
             Pair(emptyList(), null)
+        }
+    }
+
+    suspend fun deletePost(uri: String) {
+        SessionManager.runWithAuthRetry { auth ->
+            BlueskyFactory.instance(BSKY_SOCIAL.uri)
+                .feed()
+                .deletePost(
+                    FeedDeletePostRequest(auth).apply {
+                        this.uri = uri
+                    }
+                )
         }
     }
 }
