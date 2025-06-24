@@ -71,17 +71,22 @@ fun PostItem(
                     subjectRef = subjectRef,
                     rootRef = rootRef,
                     feed = record,
-                    author = ActorDefsProfileView(),
+                    author = ActorDefsProfileView(), // 現状自分のポストのみ表示なので暫定措置
                     onReply = onReply,
                     onLike = onLike,
                     onRepost = onRepost
                 )
 
-                // 親ポスト欄
-                val replied = feed.raw.reply?.parent?.record?.asFeedPost
-                DisplayParentPost(replied?.text)
-                val quoted = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost
-                DisplayParentPost(quoted?.text)
+                // 返信
+                DisplayParentPost(
+                    authorName = feed.raw.reply?.parent?.author?.displayName,
+                    record = feed.raw.reply?.parent?.record?.asFeedPost,
+                )
+                // 引用
+                DisplayParentPost(
+                    authorName = feed.raw.post.embed?.asRecord?.record?.asRecord?.author?.displayName,
+                    record = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost,
+                )
             }
         }
     }

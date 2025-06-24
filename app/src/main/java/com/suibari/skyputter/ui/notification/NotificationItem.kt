@@ -80,8 +80,10 @@ fun NotificationItem(
                 )
 
                 // 親ポスト欄
-                val parentPost = notification.parentPost
-                DisplayParentPost(parentPost?.text)
+                DisplayParentPost(
+                    authorName = null, // 元のポスト主は絶対に自分のため、表示が無駄なのでnull入れておく
+                    record = notification.parentPost,
+                )
             }
         }
     }

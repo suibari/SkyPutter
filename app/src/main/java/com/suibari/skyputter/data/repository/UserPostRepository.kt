@@ -22,11 +22,13 @@ class UserPostRepository: BskyPostActionRepository() {
                         FeedGetAuthorFeedRequest(auth).also {
                             it.actor = did!!
                             it.limit = limit
+                            it.filter = FeedGetAuthorFeedRequest.Filter.PostsAndAuthorThreads
                             it.cursor = cursor
                         }
                     )
             }
             val feeds = response.data.feed
+                .filter { feed -> feed.reason == null } // リポストを除外
             val newCursor = response.data.cursor
 
             val result = feeds.map { feed ->

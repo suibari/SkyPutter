@@ -263,14 +263,20 @@ fun DisplayActions(
 
 
 @Composable
-fun DisplayParentPost(text: String?) {
-    if (!text.isNullOrBlank()) {
+fun DisplayParentPost(authorName: String?, record: FeedPost?) {
+    if (record != null) {
         Column(
             modifier = Modifier
                 .padding(top = 8.dp)
         ) {
             Text(
-                text = text,
+                text = authorName ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+
+            Text(
+                text = record.text ?: "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline,
             )
