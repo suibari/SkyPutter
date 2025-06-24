@@ -42,6 +42,7 @@ fun NotificationListScreen(
     }
 
     PaginatedListScreen(
+        title = "Notification",
         items = notifications,
         viewModel = viewModel,
         isRefreshing = false,

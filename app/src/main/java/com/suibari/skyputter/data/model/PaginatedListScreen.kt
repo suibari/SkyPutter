@@ -6,22 +6,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.*
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.accompanist.swiperefresh.SwipeRefresh
-import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.suibari.skyputter.ui.type.HasUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun <T: HasUri> PaginatedListScreen(
+fun <T : HasUri> PaginatedListScreen(
+    title: String,
     items: List<T>,
     viewModel: PaginatedListViewModel<T>,
     isRefreshing: Boolean,
@@ -39,38 +44,32 @@ fun <T: HasUri> PaginatedListScreen(
         viewModel.loadInitialItems()
     }
 
-    // スクロール末尾で追加読み込み（改善版）
+    // スクロール末尾で読み込み
     LaunchedEffect(listState) {
         snapshotFlow {
             val layoutInfo = listState.layoutInfo
-            val visibleItemsInfo = layoutInfo.visibleItemsInfo
-            val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index
-            val totalItemsCount = layoutInfo.totalItemsCount
-
-            // 末尾から5アイテム以内に到達したときにトリガー
-            lastVisibleItemIndex != null &&
-                    totalItemsCount > 0 &&
-                    lastVisibleItemIndex >= totalItemsCount - 5
-        }
-            .collect { shouldLoadMore ->
-                if (shouldLoadMore && !isLoadingMore && !isRefreshing) {
-                    coroutineScope.launch(Dispatchers.IO) {
-                        try {
-                            onLoadMore()
-                        } catch (e: Exception) {
-                            // エラーハンドリング
-                            e.printStackTrace()
-                        }
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            val totalItems = layoutInfo.totalItemsCount
+            lastVisibleIndex != null &&
+                    totalItems > 0 &&
+                    lastVisibleIndex >= totalItems - 5
+        }.collect { shouldLoadMore ->
+            if (shouldLoadMore && !isLoadingMore && !isRefreshing) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    try {
+                        onLoadMore()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
             }
+        }
     }
 
-    // URI指定で強制スクロール
+    // URI指定スクロール
     LaunchedEffect(viewModel.targetUri, viewModel.isRefreshing) {
         val uri = viewModel.targetUri
         if (uri != null) {
-            // isRefreshingがfalse（ロード完了）になるのを待つ
             snapshotFlow { viewModel.isRefreshing }
                 .collect { refreshing ->
                     if (!refreshing) {
@@ -81,36 +80,39 @@ fun <T: HasUri> PaginatedListScreen(
                             listState.scrollToItem(0)
                         }
                         viewModel.targetUri = null
-                        this.cancel() // collect終了
+                        this.cancel()
                     }
                 }
         }
     }
 
-    SwipeRefresh(
-        state = rememberSwipeRefreshState(isRefreshing),
-        onRefresh = {
-            if (!isRefreshing && !isLoadingMore) {
-                coroutineScope.launch(Dispatchers.IO) {
-                    try {
-                        onRefresh()
-                    } catch (e: Exception) {
-                        // エラーハンドリング
-                        e.printStackTrace()
-                    }
-                }
-            }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title) }
+            )
         }
-    ) {
-        LazyColumn(
-            state = listState,
+    ) { paddingValues ->
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch(Dispatchers.IO) {
+                    onRefresh()
+                }
+            },
             modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(8.dp)
+                .padding(paddingValues)
         ) {
-            items(items = items, key = itemKey) { item ->
-                itemContent(item)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(8.dp)
+            ) {
+                items(items = items, key = itemKey) { item ->
+                    itemContent(item)
+                }
             }
         }
     }

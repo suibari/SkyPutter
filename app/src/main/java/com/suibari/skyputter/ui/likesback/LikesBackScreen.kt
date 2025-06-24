@@ -25,6 +25,7 @@ fun LikesBackScreen(
     }
 
     PaginatedListScreen(
+        title = "LikesBack",
         items = feeds,
         viewModel = viewModel,
         isRefreshing = false,
