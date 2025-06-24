@@ -18,12 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
 import com.suibari.skyputter.ui.notification.NotificationViewModel
-import com.suibari.skyputter.ui.theme.itemPadding
 import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
@@ -53,7 +53,7 @@ fun MainScreen(
     var postText by remember { mutableStateOf("") }
     val uiState by viewModel.uiState
     val profile by viewModel.profile
-    val embed by viewModel.embed
+    val embeds = viewModel.embeds
 
     val urlRegex = remember { Regex("""https?://\S+""") }
 
@@ -94,21 +94,23 @@ fun MainScreen(
 
     // 画像選択用ランチャー
     val imageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
-            val (blob, contentType, aspectRatio) = Util.getByteArrayFromUri(context, uri)
-            val filename = Util.getFileName(context, uri) ?: "image.jpg"
-
-            viewModel.setEmbed(
-                AttachedEmbed(
-                    filename = filename,
-                    imageUriString = uri.toString(),
-                    blob = blob,
-                    contentType = contentType,
-                    aspectRatio = aspectRatio
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.clearEmbed() // ループの外で一度だけクリア
+            uris.take(4).forEach { uri ->
+                val (blob, contentType, aspectRatio) = Util.getByteArrayFromUri(context, uri)
+                val filename = Util.getFileName(context, uri) ?: "image.jpg"
+                viewModel.addEmbed(
+                    AttachedEmbed(
+                        filename = filename,
+                        imageUriString = uri.toString(),
+                        blob = blob,
+                        contentType = contentType,
+                        aspectRatio = aspectRatio
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -150,7 +152,7 @@ fun MainScreen(
         bottomBar = {
             BottomAppBar {
                 IconButton(
-                    onClick = { imageLauncher.launch("image/*") },
+                    onClick = { imageLauncher.launch(arrayOf("image/*")) },
                     enabled = !uiState.isPosting
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "画像添付")
@@ -175,10 +177,11 @@ fun MainScreen(
                     isPosting = uiState.isPosting,
                     enabled = postText.isNotBlank() && !uiState.isPosting,
                     onClick = {
-                        viewModel.post(postText, embed) {
+                        viewModel.post(postText, embeds) {
                             // 投稿成功時の処理
                             postText = ""
                             viewModel.clearEmbed()
+                            viewModel.clearReplyContext()
                         }
                     }
                 )
@@ -199,11 +202,12 @@ fun MainScreen(
                     // URL検出とOG画像取得
                     val foundUrl = urlRegex.find(newText)?.value
                     if (foundUrl != null) {
+                        viewModel.clearEmbed()
                         viewModel.fetchOgImage(foundUrl)
                     }
                 },
                 viewModel = viewModel,
-                embed = embed
+                embeds = embeds
             )
 
             // ローディング表示
@@ -342,7 +346,7 @@ private fun MainContent(
     postText: String,
     onPostTextChange: (String) -> Unit,
     viewModel: MainViewModel,
-    embed: AttachedEmbed?
+    embeds: List<AttachedEmbed>?
 ) {
     val hasReply = viewModel.parentPostRecord != null
 
@@ -389,8 +393,11 @@ private fun MainContent(
 
         // 添付画像表示
         AttachedImageCard(
-            embed = embed,
-            onClear = { viewModel.clearEmbed() }
+            embeds = embeds,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            onClear = { viewModel.clearEmbed(it) }
         )
     }
 }
@@ -436,37 +443,50 @@ private fun ReplyContextCard(
 
 @Composable
 private fun AttachedImageCard(
-    embed: AttachedEmbed?,
-    onClear: () -> Unit
+    embeds: List<AttachedEmbed>?,
+    modifier: Modifier,
+    onClear: (AttachedEmbed) -> Unit
 ) {
-    embed?.imageUri?.let { imageUri ->
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = embed.title ?: embed.filename ?: "",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(
-                onClick = onClear,
-                modifier = Modifier.padding(end = 8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "添付画像を削除"
-                )
+    if (embeds.isNullOrEmpty()) return
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(180.dp) // 高さを一定に
+    ) {
+        embeds.forEach { embed ->
+            embed.imageUri?.let { imageUri ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(4.dp)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imageUri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Selected Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    IconButton(
+                        onClick = { onClear(embed) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "添付画像を削除",
+                            tint = Color.White
+                        )
+                    }
+                }
             }
         }
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(imageUri)
-                .crossfade(true)
-                .build(),
-            contentDescription = "Selected Image",
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth()
-        )
     }
 }
-

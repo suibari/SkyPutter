@@ -63,11 +63,11 @@ class MainRepository {
 
     suspend fun postText(
         postText: String,
-        embed: AttachedEmbed?,
+        embeds: List<AttachedEmbed>?,
         replyTo: FeedPostReplyRef? = null
     ): PostResult {
         return try {
-            val embedUnion = createEmbedUnion(embed)
+            val embedUnion = createEmbedUnion(embeds)
             val (displayText, facets) = extractTextAndFacets(postText)
 
             SessionManager.runWithAuthRetry { auth ->
@@ -126,12 +126,21 @@ class MainRepository {
         }
     }
 
-    private suspend fun createEmbedUnion(embed: AttachedEmbed?): EmbedUnion? {
-        return when {
-            embed?.urlString != null -> createExternalEmbed(embed)
-            embed?.blob != null -> createImageEmbed(embed)
-            else -> null
+    private suspend fun createEmbedUnion(embeds: List<AttachedEmbed>?): EmbedUnion? {
+        if (embeds.isNullOrEmpty()) return null
+
+        // URLがある場合は最初のURLのものだけをExternalEmbedとして返す（他は無視）
+        embeds.firstOrNull { it.urlString != null }?.let { urlEmbed ->
+            return createExternalEmbed(urlEmbed)
         }
+
+        // 画像や動画のblobがある場合は、それらすべてをEmbedImagesにまとめる
+        val imageEmbeds = embeds.filter { it.blob != null }
+        if (imageEmbeds.isNotEmpty()) {
+            return createImageEmbed(imageEmbeds)
+        }
+
+        return null
     }
 
     private suspend fun createExternalEmbed(embed: AttachedEmbed): EmbedExternal {
@@ -145,18 +154,18 @@ class MainRepository {
         }
     }
 
-    private suspend fun createImageEmbed(embed: AttachedEmbed): EmbedImages {
+    private suspend fun createImageEmbed(embeds: List<AttachedEmbed>): EmbedImages {
         return EmbedImages().apply {
-            images = listOf(
+            images = embeds.map { embed ->
                 EmbedImagesImage().apply {
                     image = uploadBlob(embed)
-                    alt = "image from SkyPutter"
+                    alt = embed.filename ?: "image"
                     aspectRatio = embed.aspectRatio ?: EmbedDefsAspectRatio().apply {
                         width = 1
                         height = 1
                     }
                 }
-            )
+            }
         }
     }
 

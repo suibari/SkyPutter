@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -53,8 +54,8 @@ class MainViewModel(
     private var rootPostRecord by mutableStateOf<RepoStrongRef?>(null)
 
     // 添付画像情報
-    private val _embed = mutableStateOf<AttachedEmbed?>(null)
-    val embed: MutableState<AttachedEmbed?> = _embed
+    private val _embeds = mutableStateListOf<AttachedEmbed>()
+    val embeds: List<AttachedEmbed> get() = _embeds
 
     // デバイス通知からの遷移用
     val navigateToNotification = mutableStateOf(false)
@@ -109,7 +110,7 @@ class MainViewModel(
         }
     }
 
-    fun post(postText: String, embed: AttachedEmbed?, onSuccess: () -> Unit = {}) {
+    fun post(postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
         if (_uiState.value.isPosting) return
 
         viewModelScope.launch {
@@ -117,7 +118,7 @@ class MainViewModel(
 
             val replyRef = createReplyRef()
 
-            when (val result = repo.postText(postText, embed, replyRef)) {
+            when (val result = repo.postText(postText, embeds, replyRef)) {
                 is PostResult.Success -> {
                     _uiState.value = _uiState.value.copy(isPosting = false)
                     onSuccess()
@@ -134,14 +135,12 @@ class MainViewModel(
     }
 
     fun fetchOgImage(url: String) {
-        if (_uiState.value.isFetchingOgImage || _embed.value != null) return
-
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isFetchingOgImage = true)
 
             when (val result = repo.fetchOgImageEmbed(url)) {
                 is OgImageResult.Success -> {
-                    _embed.value = result.embed
+                    _embeds[0] = result.embed
                 }
                 is OgImageResult.Error -> {
                     Log.e("MainViewModel", "fetchOgImage error", result.exception)
@@ -170,12 +169,16 @@ class MainViewModel(
         this.parentAuthor = null
     }
 
-    fun setEmbed(newEmbed: AttachedEmbed?) {
-        _embed.value = newEmbed
+    fun addEmbed(newEmbed: AttachedEmbed) {
+        _embeds.add(newEmbed)
     }
 
-    fun clearEmbed() {
-        _embed.value = null
+    fun clearEmbed(embed: AttachedEmbed? = null) {
+        if (embed != null) {
+            _embeds.remove(embed)
+        } else {
+            _embeds.clear()
+        }
     }
 
     fun clearError() {
