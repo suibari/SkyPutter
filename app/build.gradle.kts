@@ -81,6 +81,12 @@ dependencies {
     // 下書き機能
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // 動画再生
+    implementation("androidx.media3:media3-exoplayer:1.3.0")
+    implementation("androidx.media3:media3-ui:1.3.0")
+    implementation("androidx.media3:media3-common:1.3.0")
+    implementation("androidx.media3:media3-exoplayer-hls:1.3.1") // HLS(.m3u8)再生用
+
     // === 1分間隔通知のための追加依存関係 ===
 
     // フォアグラウンドサービス用

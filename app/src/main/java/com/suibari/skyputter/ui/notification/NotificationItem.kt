@@ -63,6 +63,7 @@ fun NotificationItem(
                     text = record.asFeedPost?.text,
                     authorName = notification.raw.author.displayName,
                     images = images,
+                    video = null, // 暫定非対応
                     date = notification.raw.indexedAt
                 )
 

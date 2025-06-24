@@ -17,6 +17,7 @@ import com.suibari.skyputter.ui.theme.itemPadding
 import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.ui.type.DisplayFeed
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -46,6 +47,8 @@ fun PostItem(
         )
     }
 
+    val video: EmbedVideoView? = feed.raw.post.embed?.asVideo
+
     Box (Modifier.itemPadding) {
         Row {
             // ヘッダー
@@ -61,6 +64,7 @@ fun PostItem(
                     text = record.text,
                     authorName = feed.raw.post.author?.displayName,
                     images = images,
+                    video = video,
                     date = record.createdAt,
                 )
 

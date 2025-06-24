@@ -1,5 +1,7 @@
 package com.suibari.skyputter.data.model
 
+import android.content.Context
+import android.view.ViewGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
@@ -21,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,14 +33,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.suibari.skyputter.ui.theme.itemPadding
-import com.suibari.skyputter.ui.theme.screenPadding
 import com.suibari.skyputter.ui.theme.spacePadding
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -113,7 +121,7 @@ fun DisplayHeader(
 }
 
 @Composable
-fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage>?, date: String?) {
+fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage>?, video: EmbedVideoView?, date: String?) {
     val selectedImage = remember { mutableStateOf<String?>(null) }
 
     if (!authorName.isNullOrBlank()) {
@@ -139,6 +147,10 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
                 onDismiss = { selectedImage.value = null }
             )
         }
+    }
+
+    if (video != null) {
+        DisplayVideo(video.playlist)
     }
 
     if (!date.isNullOrBlank()) {
@@ -201,6 +213,45 @@ fun ZoomableImageDialog(imageUrl: String?, onDismiss: (() -> Unit)?) {
             }
         }
     }
+}
+
+@Composable
+fun DisplayVideo(
+    videoUrl: String,
+) {
+    val context = LocalContext.current
+
+    val exoPlayer = remember {
+        // 明示的に HLS 対応の MediaSourceFactory を指定
+        val mediaSourceFactory = DefaultMediaSourceFactory(context)
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build()
+            .apply {
+                setMediaItem(
+                    MediaItem.Builder()
+                        .setUri(videoUrl)
+                        .setMimeType(MimeTypes.APPLICATION_M3U8)
+                        .build()
+                )
+                prepare()
+            }
+    }
+
+    AndroidView(
+        factory = {
+            PlayerView(it).apply {
+                player = exoPlayer
+                useController = true
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            }
+        },
+        modifier = Modifier
+            .size(200.dp)
+    )
 }
 
 @Composable
@@ -282,4 +333,35 @@ fun DisplayParentPost(authorName: String?, record: FeedPost?) {
             )
         }
     }
+}
+
+@Composable
+fun VideoPlayer(
+    context: Context,
+    videoUrl: String,
+    modifier: Modifier = Modifier
+) {
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(videoUrl))
+            prepare()
+            playWhenReady = false
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = {
+            PlayerView(it).apply {
+                player = exoPlayer
+                useController = true
+            }
+        },
+        modifier = modifier
+    )
 }
