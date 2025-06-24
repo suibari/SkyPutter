@@ -215,9 +215,9 @@ class MainActivity : ComponentActivity() {
                                 onOpenUserPost = {
                                     navController.navigate(Screen.UserPost.route)
                                 },
-                                onOpenLikesBack = {
-                                    navController.navigate(Screen.LikesBack.route)
-                                },
+//                                onOpenLikesBack = {
+//                                    navController.navigate(Screen.LikesBack.route)
+//                                },
                                 onOpenDraft = {
                                     navController.navigate(Screen.Draft.route)
                                 },

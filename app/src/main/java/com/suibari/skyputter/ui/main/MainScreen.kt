@@ -4,10 +4,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,15 +17,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
 import com.suibari.skyputter.ui.notification.NotificationViewModel
+import com.suibari.skyputter.ui.theme.itemPadding
+import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
@@ -39,7 +44,7 @@ fun MainScreen(
     onLogout: () -> Unit,
     onOpenNotification: () -> Unit,
     onOpenUserPost: () -> Unit,
-    onOpenLikesBack: () -> Unit,
+//    onOpenLikesBack: () -> Unit,
     onOpenDraft: () -> Unit,
     onDraftTextCleared: () -> Unit,
 ) {
@@ -125,9 +130,9 @@ fun MainScreen(
                     )
                 },
                 actions = {
-                    IconButton(onClick = onOpenLikesBack) {
-                        Icon(Icons.Default.Favorite, contentDescription = "LikesBack")
-                    }
+//                    IconButton(onClick = onOpenLikesBack) {
+//                        Icon(Icons.Default.Favorite, contentDescription = "LikesBack")
+//                    }
                     IconButton(onClick = onOpenNotification) {
                         BadgedBox(
                             badge = {
@@ -339,33 +344,48 @@ private fun MainContent(
     viewModel: MainViewModel,
     embed: AttachedEmbed?
 ) {
+    val hasReply = viewModel.parentPostRecord != null
+
     Column(
         modifier = modifier
             .padding(16.dp)
-            .fillMaxWidth()
+            .fillMaxSize()
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .padding(bottom = if (viewModel.parentPostRecord != null) 120.dp else 80.dp)
                 .fillMaxWidth()
+                .weight(if (hasReply) 5f else 6f)
         ) {
             TextField(
                 value = postText,
                 onValueChange = onPostTextChange,
                 label = { Text("今なにしてる？") },
                 modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                enabled = !viewModel.uiState.value.isPosting
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+                enabled = !viewModel.uiState.value.isPosting,
+                maxLines = Int.MAX_VALUE
+            )
+            Text(
+                text = "${postText.length}/300",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
             )
         }
 
         // 返信先表示
-        ReplyContextCard(
-            parentPost = viewModel.parentPost,
-            isVisible = viewModel.parentPostRecord != null,
-            onClear = { viewModel.clearReplyContext() }
-        )
+        if (hasReply) {
+            ReplyContextCard(
+                parentPost = viewModel.parentPost,
+                parentAuthor = viewModel.parentAuthor,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                onClear = { viewModel.clearReplyContext() }
+            )
+        }
 
         // 添付画像表示
         AttachedImageCard(
@@ -378,27 +398,37 @@ private fun MainContent(
 @Composable
 private fun ReplyContextCard(
     parentPost: FeedPost?,
-    isVisible: Boolean,
+    parentAuthor: ActorDefsProfileView?,
+    modifier: Modifier,
     onClear: () -> Unit
 ) {
-    if (isVisible) {
-        Card(modifier = Modifier.padding(top = 8.dp)) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                Row {
-                    Text(
-                        text = "返信先",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onClear) {
-                        Icon(Icons.Default.Close, contentDescription = "閉じる")
-                    }
-                }
-                Text(
-                    text = parentPost?.text ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
+    Card(
+        modifier = modifier
+            .padding(top = 8.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AsyncImage( // アイコン
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(parentAuthor?.avatar)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "avatar",
+                modifier = Modifier.size(32.dp)
+            )
+
+            Spacer (Modifier.spacePadding)
+
+            Text(
+                text = parentPost?.text ?: "",
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+
+            IconButton(onClick = onClear) {
+                Icon(Icons.Default.Close, contentDescription = "閉じる")
             }
         }
     }
@@ -439,3 +469,4 @@ private fun AttachedImageCard(
         )
     }
 }
+

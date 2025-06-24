@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.suibari.skyputter.data.model.PaginatedListScreen
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -19,8 +20,8 @@ fun NotificationListScreen(
     val notifications = viewModel.items
     val coroutineScope = rememberCoroutineScope()
 
-    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
-        mainViewModel.setReplyContext(parentRef, rootRef, parentPost)
+    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView ->
+        mainViewModel.setReplyContext(parentRef, rootRef, parentPost, parentAuthor)
         onNavigateToMain()
     }
 

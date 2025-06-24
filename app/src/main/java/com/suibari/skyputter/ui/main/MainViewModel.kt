@@ -16,6 +16,7 @@ import com.suibari.skyputter.ui.likesback.LikesBackViewModel
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPostReplyRef
@@ -42,12 +43,16 @@ class MainViewModel(
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
     val profile: MutableState<ActorDefsProfileViewDetailed?> = _profile
 
+    // 返信先ポスト情報
     var parentPostRecord by mutableStateOf<RepoStrongRef?>(null)
         private set
     var parentPost by mutableStateOf<FeedPost?>(null)
         private set
+    var parentAuthor by mutableStateOf<ActorDefsProfileView?>(null)
+        private set
     private var rootPostRecord by mutableStateOf<RepoStrongRef?>(null)
 
+    // 添付画像情報
     private val _embed = mutableStateOf<AttachedEmbed?>(null)
     val embed: MutableState<AttachedEmbed?> = _embed
 
@@ -151,16 +156,18 @@ class MainViewModel(
         }
     }
 
-    fun setReplyContext(parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) {
+    fun setReplyContext(parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView) {
         this.parentPostRecord = parentRef
         this.rootPostRecord = rootRef
         this.parentPost = parentPost
+        this.parentAuthor = parentAuthor
     }
 
     fun clearReplyContext() {
         this.parentPostRecord = null
         this.rootPostRecord = null
         this.parentPost = null
+        this.parentAuthor = null
     }
 
     fun setEmbed(newEmbed: AttachedEmbed?) {

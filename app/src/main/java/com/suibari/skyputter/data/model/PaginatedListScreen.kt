@@ -47,10 +47,10 @@ fun <T: HasUri> PaginatedListScreen(
             val lastVisibleItemIndex = visibleItemsInfo.lastOrNull()?.index
             val totalItemsCount = layoutInfo.totalItemsCount
 
-            // 末尾から10アイテム以内に到達したときにトリガー
+            // 末尾から5アイテム以内に到達したときにトリガー
             lastVisibleItemIndex != null &&
                     totalItemsCount > 0 &&
-                    lastVisibleItemIndex >= totalItemsCount - 10
+                    lastVisibleItemIndex >= totalItemsCount - 5
         }
             .collect { shouldLoadMore ->
                 if (shouldLoadMore && !isLoadingMore && !isRefreshing) {

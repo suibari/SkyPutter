@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,6 +34,10 @@ import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.suibari.skyputter.ui.theme.itemPadding
+import com.suibari.skyputter.ui.theme.screenPadding
+import com.suibari.skyputter.ui.theme.spacePadding
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -44,12 +49,11 @@ data class DisplayImage (
 
 @Composable
 fun DisplayHeader(
-
     avatarUrl: String?,
     reason: String? = null,
     showNewMark: Boolean = false
 ) {
-    Row (modifier = Modifier.padding(8.dp)) {
+    Row {
         val context = LocalContext.current
         val imageRequest = remember(avatarUrl) {
             ImageRequest.Builder(context)
@@ -64,41 +68,45 @@ fun DisplayHeader(
             modifier = Modifier.size(48.dp)
         )
 
-        if (reason != null) {
-            when (reason) {
-                "reply" -> Icon(
-                    Icons.Default.Share,
-                    contentDescription = "リプライ",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-                "repost" -> Icon(
-                    Icons.Default.Refresh,
-                    contentDescription = "リポスト",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-                "like" -> Icon(
-                    Icons.Default.FavoriteBorder,
-                    contentDescription = "リポスト",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-                "follow" -> Icon(
-                    Icons.Default.Face,
-                    contentDescription = "フォロー",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
-                "unknown" -> Icon(
-                    Icons.Default.Notifications,
-                    contentDescription = "不明",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
+        Spacer (Modifier.spacePadding)
+
+        Column {
+            if (reason != null) {
+                when (reason) {
+                    "reply" -> Icon(
+                        Icons.Default.Share,
+                        contentDescription = "リプライ",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                    "repost" -> Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "リポスト",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                    "like" -> Icon(
+                        Icons.Default.FavoriteBorder,
+                        contentDescription = "リポスト",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                    "follow" -> Icon(
+                        Icons.Default.Face,
+                        contentDescription = "フォロー",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                    "unknown" -> Icon(
+                        Icons.Default.Notifications,
+                        contentDescription = "不明",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
             }
         }
 
-        Column(modifier = Modifier.padding(start = 8.dp)) {
-            Row {
-                if (showNewMark) {
-                    Text(" ●", color = Color.Red)
-                }
+        Spacer (Modifier.spacePadding)
+
+        Column {
+            if (showNewMark) {
+                Text(" ●", color = Color.Red)
             }
         }
     }
@@ -155,7 +163,6 @@ fun DisplayImages(
                     contentDescription = image.alt,
                     modifier = Modifier
                         .size(100.dp)
-                        .padding(end = 4.dp)
                         .clickable { onImageClick(image.urlFullsize) }
                 )
             }
@@ -204,7 +211,8 @@ fun DisplayActions(
     subjectRef: RepoStrongRef,
     rootRef: RepoStrongRef,
     feed: FeedPost?,
-    onReply: ((RepoStrongRef, RepoStrongRef, FeedPost) -> Unit)?,
+    author: ActorDefsProfileView,
+    onReply: ((RepoStrongRef, RepoStrongRef, FeedPost, ActorDefsProfileView) -> Unit)?,
     onLike: ((RepoStrongRef) -> Unit)?,
     onRepost: ((RepoStrongRef) -> Unit)?
 ) {
@@ -212,7 +220,7 @@ fun DisplayActions(
         val likeColor = if (isLiked) Color.Red else MaterialTheme.colorScheme.onBackground
         val repostColor = if (isReposted) Color.Green else MaterialTheme.colorScheme.onBackground
 
-        Row(modifier = Modifier.padding(top = 8.dp)) {
+        Row {
             if (feed?.asFeedPost != null) {
                 Icon(
                     Icons.Default.Share,
@@ -221,7 +229,7 @@ fun DisplayActions(
                     modifier = Modifier
                         .padding(end = 8.dp)
                         .clickable {
-                            onReply?.invoke(subjectRef, rootRef, feed)
+                            onReply?.invoke(subjectRef, rootRef, feed, author)
                         }
                 )
             }
@@ -260,7 +268,6 @@ fun DisplayParentPost(text: String?) {
         Column(
             modifier = Modifier
                 .padding(top = 8.dp)
-                .padding(8.dp)
         ) {
             Text(
                 text = text,

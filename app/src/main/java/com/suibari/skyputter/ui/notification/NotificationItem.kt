@@ -1,7 +1,9 @@
 package com.suibari.skyputter.ui.notification
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,8 +13,11 @@ import com.suibari.skyputter.data.model.DisplayContent
 import com.suibari.skyputter.data.model.DisplayHeader
 import com.suibari.skyputter.data.model.DisplayImage
 import com.suibari.skyputter.data.model.DisplayParentPost
+import com.suibari.skyputter.ui.theme.itemPadding
+import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.ui.type.DisplayNotification
 import com.suibari.skyputter.util.BskyUtil
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -21,7 +26,7 @@ fun NotificationItem(
     notification: DisplayNotification,
     isLiked: Boolean,
     isReposted: Boolean,
-    onReply: (parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost) -> Unit,
+    onReply: (parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView) -> Unit,
     onLike: (ref: RepoStrongRef) -> Unit,
     onRepost: (ref: RepoStrongRef) -> Unit,
 ) {
@@ -42,37 +47,42 @@ fun NotificationItem(
         )
     }
 
-    Row (modifier = Modifier.padding(start = 8.dp)) {
-        // 自分ポスト欄
-        DisplayHeader(
-            avatarUrl = notification.raw.author.avatar,
-            showNewMark = notification.isNew,
-            reason = notification.raw.reason
-        )
-
-        Column {
-            DisplayContent(
-                text = record.asFeedPost?.text,
-                authorName = notification.raw.author.displayName,
-                images = images,
-                date = notification.raw.indexedAt
+    Box (Modifier.itemPadding) {
+        Row {
+            // 自分ポスト欄
+            DisplayHeader(
+                avatarUrl = notification.raw.author.avatar,
+                showNewMark = notification.isNew,
+                reason = notification.raw.reason
             )
 
-            DisplayActions(
-                isMyPost = false,
-                isLiked = isLiked,
-                isReposted = isReposted,
-                subjectRef = subjectRef,
-                rootRef = rootRef,
-                feed = notification.raw.record.asFeedPost,
-                onReply = onReply,
-                onLike = onLike,
-                onRepost = onRepost
-            )
+            Spacer (Modifier.spacePadding)
 
-            // 親ポスト欄
-            val parentPost = notification.parentPost
-            DisplayParentPost(parentPost?.text)
+            Column {
+                DisplayContent(
+                    text = record.asFeedPost?.text,
+                    authorName = notification.raw.author.displayName,
+                    images = images,
+                    date = notification.raw.indexedAt
+                )
+
+                DisplayActions(
+                    isMyPost = false,
+                    isLiked = isLiked,
+                    isReposted = isReposted,
+                    subjectRef = subjectRef,
+                    rootRef = rootRef,
+                    feed = notification.raw.record.asFeedPost,
+                    author = notification.raw.author,
+                    onReply = onReply,
+                    onLike = onLike,
+                    onRepost = onRepost
+                )
+
+                // 親ポスト欄
+                val parentPost = notification.parentPost
+                DisplayParentPost(parentPost?.text)
+            }
         }
     }
 }

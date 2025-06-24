@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import com.suibari.skyputter.data.model.PaginatedListScreen
 import com.suibari.skyputter.ui.post.PostItem
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
@@ -18,8 +19,8 @@ fun LikesBackScreen(
     val feeds = viewModel.items
     val coroutineScope = rememberCoroutineScope()
 
-    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost ->
-        mainViewModel.setReplyContext(parentRef, rootRef, parentPost)
+    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView ->
+        mainViewModel.setReplyContext(parentRef, rootRef, parentPost, parentAuthor)
         onNavigateToMain()
     }
 
