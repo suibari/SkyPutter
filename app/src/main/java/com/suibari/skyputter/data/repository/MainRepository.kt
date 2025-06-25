@@ -198,9 +198,9 @@ class MainRepository {
             val json = response.body?.string() ?: return OgImageResult.NotFound
             val obj = JSONObject(json)
 
-            val title = obj.optString("title", null)
-            val description = obj.optString("description", null)
-            val imageUrl = obj.optString("image", null)
+            val title = obj.optString("title")
+            val description = obj.optString("description")
+            val imageUrl = obj.optString("image")
 
             if (title == "" && description == "" && imageUrl == "") return OgImageResult.NotFound
 

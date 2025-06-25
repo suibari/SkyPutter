@@ -25,6 +25,7 @@ import com.suibari.skyputter.ui.type.DisplayFeed
 fun UserPostListScreen(
     viewModel: UserPostViewModel,
     myDid: String,
+    onNavigateToMain: () -> Unit,
 ) {
     var postToDelete by remember { mutableStateOf<DisplayFeed?>(null) }
 
@@ -34,6 +35,7 @@ fun UserPostListScreen(
         viewModel = viewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
+        onBack = { onNavigateToMain() },
         onRefresh = { viewModel.loadInitialItems() },
         onLoadMore = { viewModel.loadMoreItems() },
         itemKey = { it.uri!! },
