@@ -4,15 +4,22 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue.*
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -39,69 +46,49 @@ fun UserPostListScreen(
         onLoadMore = { viewModel.loadMoreItems() },
         itemKey = { it.uri!! },
         itemContent = { feed ->
-            var rawOffsetX by remember { mutableStateOf(0f) }
-            val animatedOffsetX by animateFloatAsState(
-                targetValue = rawOffsetX,
-                label = "swipeOffset"
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == EndToStart) {
+                        postToDelete = feed
+                    }
+                    false // 自動で消えないようにする
+                }
             )
 
-            Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
-                var itemHeightPx by remember { mutableStateOf(0) }
-
-                // Background
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .let {
-                            if (itemHeightPx > 0) {
-                                it.height(with(LocalDensity.current) { itemHeightPx.toDp() })
-                            } else {
-                                it.height(80.dp)
+            SwipeToDismissBox(
+                state = dismissState,
+                enableDismissFromStartToEnd = false,
+                backgroundContent = {
+                    when (dismissState.dismissDirection) {
+                        EndToStart -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(lerp(Color.LightGray, Color.Red, dismissState.progress))
+                                    .wrapContentSize(Alignment.CenterEnd)
+                                    .padding(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.White
+                                )
                             }
                         }
-                        .background(Color.Red),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp).padding(end = 16.dp)
-                    )
-                }
-
-                // Foreground post item
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
-                        .onGloballyPositioned { coordinates ->
-                            itemHeightPx = coordinates.size.height
-                        }
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (rawOffsetX < -200f) {
-                                        postToDelete = feed
-                                    }
-                                    rawOffsetX = 0f
-                                }
-                            ) { change, dragAmount ->
-                                rawOffsetX = (rawOffsetX + dragAmount).coerceIn(-600f, 0f)
-                                change.consume()
-                            }
-                        }
-                ) {
-                    PostItem(
-                        feed = feed,
-                        myDid = myDid,
-                        isLiked = false,
-                        isReposted = false,
-                        onReply = null,
-                        onLike = null,
-                        onRepost = null,
-                    )
-                }
+                        else -> {}
+                    }
+                },
+                modifier = Modifier.padding(vertical = 4.dp) // 少しスペース
+            ) {
+                PostItem(
+                    feed = feed,
+                    myDid = myDid,
+                    isLiked = false,
+                    isReposted = false,
+                    onReply = null,
+                    onLike = null,
+                    onRepost = null,
+                )
             }
         }
     )

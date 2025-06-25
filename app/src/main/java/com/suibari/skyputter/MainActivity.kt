@@ -213,7 +213,6 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate(Screen.NotificationList.route)
                                 },
                                 onOpenUserPost = {
-                                    viewModelContainer.userPostViewModel?.loadInitialItems()
                                     navController.navigate(Screen.UserPost.route)
                                 },
 //                                onOpenLikesBack = {
