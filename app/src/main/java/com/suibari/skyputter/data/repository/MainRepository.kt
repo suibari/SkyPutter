@@ -1,6 +1,5 @@
 package com.suibari.skyputter.data.repository
 
-import android.os.Build
 import android.util.Log
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
@@ -26,6 +25,7 @@ import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacet
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.util.facet.FacetUtil
 import java.net.URL
+import java.net.URLEncoder
 import java.util.Locale
 
 sealed class PostResult {
@@ -97,17 +97,11 @@ class MainRepository {
         try {
             Log.d("OGP", "Fetching OGP for: $url")
 
-            val finalUrl = fetchFinalUrl(url)
-            if (finalUrl == null) {
-                Log.w("OGP", "Final URL could not be resolved")
-                return@withContext OgImageResult.NotFound
-            }
-
+            val finalUrl = fetchFinalUrl(url) ?: return@withContext tryCardybFallback(url)
             Log.d("OGP", "Resolved final URL: $finalUrl")
 
             // Agent偽装
-            val doc = Jsoup
-                .connect(finalUrl)
+            val doc = Jsoup.connect(finalUrl)
                 .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 .get()
 
@@ -119,51 +113,35 @@ class MainRepository {
             Log.d("OGP", "OG:title = $ogTitle")
             Log.d("OGP", "OG:desc  = $ogDescription")
 
-            // 画像がなくてもタイトルか説明があれば文字だけのリンクカード用に返す
-            if (ogImageRaw.isEmpty()) {
-                // 画像なしのケースでもタイトルか説明があれば成功で返す
-                if (ogTitle.isNotEmpty() || ogDescription.isNotEmpty()) {
-                    val embed = AttachedEmbed(
-                        title = ogTitle.takeIf { it.isNotEmpty() },
-                        description = ogDescription.takeIf { it.isNotEmpty() },
-                        filename = null,
-                        urlString = url,
-                        imageUriString = null,  // 画像なし
-                        blob = null,
-                        contentType = null,
-                        aspectRatio = null
-                    )
-                    return@withContext OgImageResult.Success(embed)
-                } else {
-                    return@withContext OgImageResult.NotFound
-                }
+            if (ogImageRaw.isEmpty() || ogTitle.isEmpty()) {
+                Log.w("OGP", "Missing og:image or og:title. Falling back.")
+                return@withContext tryCardybFallback(url)
             }
 
             val ogImage = URL(URL(finalUrl), ogImageRaw).toString()
             Log.d("OGP", "Resolved og:image full URL: $ogImage")
 
             val (imageData, contentType) = getByteArrayFromUrl(ogImage)
-                ?: return@withContext OgImageResult.Error("Failed to download image")
+                ?: return@withContext tryCardybFallback(url)
 
             val ext = extensionFromContentType(contentType)
             Log.d("OGP", "Image contentType: $contentType, extension: $ext")
 
-            val embed = AttachedEmbed(
-                title = ogTitle.takeIf { it.isNotEmpty() },
-                description = ogDescription.takeIf { it.isNotEmpty() },
-                filename = "ogp.$ext",
-                urlString = finalUrl,
-                imageUriString = ogImage,
-                blob = imageData,
-                contentType = contentType,
-                aspectRatio = null
+            return@withContext OgImageResult.Success(
+                AttachedEmbed(
+                    title = ogTitle.takeIf { it.isNotEmpty() },
+                    description = ogDescription.takeIf { it.isNotEmpty() },
+                    filename = "ogp.$ext",
+                    urlString = finalUrl,
+                    imageUriString = ogImage,
+                    blob = imageData,
+                    contentType = contentType,
+                    aspectRatio = null
+                )
             )
-
-            Log.d("OGP", "OGP embed successfully created")
-            OgImageResult.Success(embed)
         } catch (e: Exception) {
-            Log.e("OGP", "Failed to fetch OGP: ${e.message}", e)
-            OgImageResult.Error("Failed to fetch OGP", e)
+            Log.e("OGP", "Primary OGP fetch failed: ${e.message}", e)
+            return@withContext tryCardybFallback(url)
         }
     }
 
@@ -192,6 +170,58 @@ class MainRepository {
             return@withContext response.request.url.toString()
         } catch (e: Exception) {
             return@withContext null
+        }
+    }
+
+    /**
+     * OPGを返す公式APIへのフェッチ関数
+     */
+    private suspend fun tryCardybFallback(url: String): OgImageResult {
+        return try {
+            val client = OkHttpClient()
+            val encodedUrl = withContext(Dispatchers.IO) {
+                URLEncoder.encode(url, "UTF-8")
+            }
+            val request = Request.Builder()
+                .url("https://cardyb.bsky.app/v1/extract?url=$encodedUrl")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+
+            if (!response.isSuccessful) return OgImageResult.NotFound
+
+            val json = response.body?.string() ?: return OgImageResult.NotFound
+            val obj = org.json.JSONObject(json)
+
+            val title = obj.optString("title", null)
+            val description = obj.optString("description", null)
+            val imageUrl = obj.optString("image", null)
+
+            if (title == null && description == null && imageUrl == null) return OgImageResult.NotFound
+
+            val (blob, contentType) = if (imageUrl != null) {
+                getByteArrayFromUrl(imageUrl) ?: (null to null)
+            } else {
+                null to null
+            }
+
+            val ext = extensionFromContentType(contentType)
+
+            val embed = AttachedEmbed(
+                title = title,
+                description = description,
+                filename = if (blob != null) "ogp.$ext" else null,
+                urlString = url,
+                imageUriString = imageUrl,
+                blob = blob,
+                contentType = contentType,
+                aspectRatio = null
+            )
+            Log.d("OGP", "Cardyb fallback succeeded")
+            OgImageResult.Success(embed)
+        } catch (e: Exception) {
+            Log.e("OGP", "Cardyb fallback failed", e)
+            OgImageResult.Error("Cardyb fallback failed", e)
         }
     }
 
