@@ -29,7 +29,7 @@ abstract class PaginatedListViewModel<T : HasUri> : ViewModel() {
         get() = viewerStatusMap
 
     // ローディング状態を外部に公開
-    private val _isRefreshing = mutableStateOf(false)
+    protected val _isRefreshing = mutableStateOf(false)
     val isRefreshing: Boolean get() = _isRefreshing.value
 
     private val _isLoadingMore = mutableStateOf(false)

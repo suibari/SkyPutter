@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.notification
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.data.repository.NotificationRepository
 import com.suibari.skyputter.data.model.PaginatedListViewModel
@@ -13,6 +14,7 @@ class NotificationViewModel(
     private val notifier: DeviceNotifier
 ) : PaginatedListViewModel<DisplayNotification>() {
 
+    /** フェッチ: 通知更新用 */
     override suspend fun fetchItems(limit: Int, cursor: String?): Pair<List<DisplayNotification>, String?> {
         val (items, newCursor) = repo.fetchNotifications(limit, cursor)
         updateViewerStatus(items)
@@ -30,31 +32,27 @@ class NotificationViewModel(
     }
 
     /** 手動フェッチ(未読を既読にしてリスト更新) */
-    suspend fun fetchNow() {
-        // 先に既読マークを更新
-        repo.markAllAsRead()
+    fun markAllAsReadAndReload(limit: Int = 25) {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                repo.markAllAsRead()
 
-        // 新しいデータを取得（この時点でisNewはfalseになるはず）
-        val (newNotifs, newCursor) = repo.fetchNotifications(limit = 15)
+                val (notifs, newCursor) = fetchItems(limit)
+                val updated = notifs.map { it.copy(isNew = false) }
 
-        // リストに追加
-        updateViewerStatus(newNotifs)
-        cursor = newCursor
+                _items.clear()
+                _items.addAll(updated)
+                cursor = newCursor
 
-        // 念のため、明示的にすべてのアイテムのisNewをfalseに設定
-        val updatedItems = _items.map { notification ->
-            if (notification.isNew) {
-                notification.copy(isNew = false)
-            } else {
-                notification
+                updateViewerStatus(updated)
+            } catch (e: Exception) {
+                Log.e("NotificationViewModel", "markAllAsReadAndReload: error", e)
+            } finally {
+                _isRefreshing.value = false
             }
         }
-
-        // リストを更新
-        _items.clear()
-        _items.addAll(updatedItems)
     }
-
 
     /**
      * アプリがフォアグラウンドの時の即座通知用

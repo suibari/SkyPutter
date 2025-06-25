@@ -45,10 +45,10 @@ fun NotificationListScreen(
         title = "Notification",
         items = notifications,
         viewModel = viewModel,
-        isRefreshing = false,
+        isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
         onRefresh = {
-            viewModel.fetchNow()
+            viewModel.markAllAsReadAndReload()
         },
         onLoadMore = {
             viewModel.loadMoreItems()
