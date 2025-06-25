@@ -1,6 +1,7 @@
 package com.suibari.skyputter.data.repository
 
 import android.os.Build
+import android.util.Log
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -94,35 +95,103 @@ class MainRepository {
      */
     suspend fun fetchOgImageEmbed(url: String): OgImageResult = withContext(Dispatchers.IO) {
         try {
-            val doc = Jsoup.connect(url).get()
+            Log.d("OGP", "Fetching OGP for: $url")
+
+            val finalUrl = fetchFinalUrl(url)
+            if (finalUrl == null) {
+                Log.w("OGP", "Final URL could not be resolved")
+                return@withContext OgImageResult.NotFound
+            }
+
+            Log.d("OGP", "Resolved final URL: $finalUrl")
+
+            // Agent偽装
+            val doc = Jsoup
+                .connect(finalUrl)
+                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .get()
+
             val ogImageRaw = doc.select("meta[property=og:image]").attr("content")
             val ogTitle = doc.select("meta[property=og:title]").attr("content")
             val ogDescription = doc.select("meta[property=og:description]").attr("content")
 
+            Log.d("OGP", "OG:image = $ogImageRaw")
+            Log.d("OGP", "OG:title = $ogTitle")
+            Log.d("OGP", "OG:desc  = $ogDescription")
+
+            // 画像がなくてもタイトルか説明があれば文字だけのリンクカード用に返す
             if (ogImageRaw.isEmpty()) {
-                return@withContext OgImageResult.NotFound
+                // 画像なしのケースでもタイトルか説明があれば成功で返す
+                if (ogTitle.isNotEmpty() || ogDescription.isNotEmpty()) {
+                    val embed = AttachedEmbed(
+                        title = ogTitle.takeIf { it.isNotEmpty() },
+                        description = ogDescription.takeIf { it.isNotEmpty() },
+                        filename = null,
+                        urlString = url,
+                        imageUriString = null,  // 画像なし
+                        blob = null,
+                        contentType = null,
+                        aspectRatio = null
+                    )
+                    return@withContext OgImageResult.Success(embed)
+                } else {
+                    return@withContext OgImageResult.NotFound
+                }
             }
 
-            val ogImage = URL(URL(url), ogImageRaw).toString()
+            val ogImage = URL(URL(finalUrl), ogImageRaw).toString()
+            Log.d("OGP", "Resolved og:image full URL: $ogImage")
+
             val (imageData, contentType) = getByteArrayFromUrl(ogImage)
-                ?: return@withContext OgImageResult.Error("画像の取得に失敗しました")
+                ?: return@withContext OgImageResult.Error("Failed to download image")
 
             val ext = extensionFromContentType(contentType)
+            Log.d("OGP", "Image contentType: $contentType, extension: $ext")
 
             val embed = AttachedEmbed(
                 title = ogTitle.takeIf { it.isNotEmpty() },
                 description = ogDescription.takeIf { it.isNotEmpty() },
                 filename = "ogp.$ext",
-                urlString = url,
+                urlString = finalUrl,
                 imageUriString = ogImage,
                 blob = imageData,
                 contentType = contentType,
                 aspectRatio = null
             )
 
+            Log.d("OGP", "OGP embed successfully created")
             OgImageResult.Success(embed)
         } catch (e: Exception) {
-            OgImageResult.Error("OG画像の取得に失敗しました", e)
+            Log.e("OGP", "Failed to fetch OGP: ${e.message}", e)
+            OgImageResult.Error("Failed to fetch OGP", e)
+        }
+    }
+
+    /**
+     * リダイレクト時に最終URLを得る
+     */
+    private suspend fun fetchFinalUrl(startUrl: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val client = OkHttpClient.Builder()
+                .followRedirects(false) // 手動でリダイレクト追跡
+                .build()
+
+            var request = Request.Builder().url(startUrl).build()
+            var response = client.newCall(request).execute()
+            var redirectCount = 0
+
+            while (response.isRedirect && redirectCount < 5) {
+                val location = response.header("Location") ?: return@withContext null
+                val nextUrl = URL(URL(startUrl), location).toString()
+
+                request = Request.Builder().url(nextUrl).build()
+                response = client.newCall(request).execute()
+                redirectCount++
+            }
+
+            return@withContext response.request.url.toString()
+        } catch (e: Exception) {
+            return@withContext null
         }
     }
 

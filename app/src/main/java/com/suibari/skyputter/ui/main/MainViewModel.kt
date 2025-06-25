@@ -140,7 +140,7 @@ class MainViewModel(
 
             when (val result = repo.fetchOgImageEmbed(url)) {
                 is OgImageResult.Success -> {
-                    _embeds[0] = result.embed
+                    _embeds.add(result.embed)
                 }
                 is OgImageResult.Error -> {
                     Log.e("MainViewModel", "fetchOgImage error", result.exception)

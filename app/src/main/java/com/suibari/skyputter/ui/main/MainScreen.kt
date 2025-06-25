@@ -3,6 +3,7 @@ package com.suibari.skyputter.ui.main
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -394,6 +395,7 @@ private fun MainContent(
         // 添付画像表示
         AttachedImageCard(
             embeds = embeds,
+            isFetchingOgImage = viewModel.uiState.value.isFetchingOgImage,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -441,50 +443,160 @@ private fun ReplyContextCard(
     }
 }
 
+// AttachedImageCardの修正
 @Composable
 private fun AttachedImageCard(
     embeds: List<AttachedEmbed>?,
+    isFetchingOgImage: Boolean,
     modifier: Modifier,
     onClear: (AttachedEmbed) -> Unit
 ) {
+    // OG画像取得中の場合はローディングを表示
+    if (isFetchingOgImage && embeds.isNullOrEmpty()) {
+        Card(
+            modifier = modifier
+                .padding(top = 8.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "リンクカード生成中...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    // embedsが空の場合は何も表示しない
     if (embeds.isNullOrEmpty()) return
 
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .height(180.dp) // 高さを一定に
+            .padding(top = 8.dp)
     ) {
-        embeds.forEach { embed ->
-            embed.imageUri?.let { imageUri ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(4.dp)
+        embeds.take(4).forEach { embed ->
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(4.dp)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUri)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Selected Image",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-
-                    IconButton(
-                        onClick = { onClear(embed) },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(4.dp)
-                            .size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "添付画像を削除",
-                            tint = Color.White
-                        )
+                    when {
+                        // imageUrlもtitleもある場合：左に画像、右にtitle/description
+                        embed.imageUri != null && embed.title != null -> {
+                            Row(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(embed.imageUri)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "OG Image",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                )
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(8.dp)
+                                        .fillMaxHeight(),
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = embed.title!!,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    embed.description?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        // imageUrlのみ（添付画像）：画像を全面に表示
+                        embed.imageUri != null && embed.title == null -> {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(embed.imageUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Attached Image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        // titleのみ（OG画像のないサイト）：titleを全面に表示
+                        embed.title != null && embed.imageUri == null -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = embed.title!!,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                embed.description?.let {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 4,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
+                }
+
+                // 削除ボタン
+                IconButton(
+                    onClick = { onClear(embed) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "削除",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .background(
+                                Color.Black.copy(alpha = 0.5f),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                            .padding(2.dp)
+                    )
                 }
             }
         }
