@@ -57,6 +57,7 @@ fun MainScreen(
     val embeds = viewModel.embeds
 
     val urlRegex = remember { Regex("""https?://\S+""") }
+    var lastFetchedUrl by remember { mutableStateOf<String?>(null) }
 
     // デバイス通知からの遷移イベント監視
     LaunchedEffect(viewModel.navigateToNotification.value) {
@@ -183,6 +184,7 @@ fun MainScreen(
                             postText = ""
                             viewModel.clearEmbed()
                             viewModel.clearReplyContext()
+                            lastFetchedUrl = null
                         }
                     }
                 )
@@ -200,11 +202,23 @@ fun MainScreen(
                 postText = postText,
                 onPostTextChange = { newText ->
                     postText = newText
+
                     // URL検出とOG画像取得
-                    val foundUrl = urlRegex.find(newText)?.value
-                    if (foundUrl != null) {
+                    val match = urlRegex.find(newText)
+                    val foundUrl = match?.value?.trim()
+
+                    // テキスト全消去 → URL履歴をリセット
+                    if (newText.isBlank()) {
+                        lastFetchedUrl = null
+                        viewModel.clearEmbed()
+                        return@MainContent
+                    }
+
+                    // URLが見つかるかつ初回のみ実行
+                    if (lastFetchedUrl == null && foundUrl != null) {
                         viewModel.clearEmbed()
                         viewModel.fetchOgImage(foundUrl)
+                        lastFetchedUrl = foundUrl
                     }
                 },
                 viewModel = viewModel,

@@ -1,6 +1,7 @@
 package com.suibari.skyputter.data.repository
 
 import android.util.Log
+import coil3.Uri
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
 import kotlinx.coroutines.Dispatchers
@@ -25,8 +26,10 @@ import work.socialhub.kbsky.model.app.bsky.richtext.RichtextFacet
 import work.socialhub.kbsky.model.share.Blob
 import work.socialhub.kbsky.util.facet.FacetUtil
 import java.net.URL
-import java.net.URLEncoder
+import android.net.Uri.encode
+import org.json.JSONObject
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 sealed class PostResult {
     object Success : PostResult()
@@ -178,28 +181,30 @@ class MainRepository {
      */
     private suspend fun tryCardybFallback(url: String): OgImageResult {
         return try {
-            val client = OkHttpClient()
-            val encodedUrl = withContext(Dispatchers.IO) {
-                URLEncoder.encode(url, "UTF-8")
-            }
+            val client = OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
+
+            val encodedUrl = encode(url)
             val request = Request.Builder()
                 .url("https://cardyb.bsky.app/v1/extract?url=$encodedUrl")
                 .build()
 
-            val response = withContext(Dispatchers.IO) { client.newCall(request).execute() }
+            val response = client.newCall(request).execute()
 
             if (!response.isSuccessful) return OgImageResult.NotFound
 
             val json = response.body?.string() ?: return OgImageResult.NotFound
-            val obj = org.json.JSONObject(json)
+            val obj = JSONObject(json)
 
             val title = obj.optString("title", null)
             val description = obj.optString("description", null)
             val imageUrl = obj.optString("image", null)
 
-            if (title == null && description == null && imageUrl == null) return OgImageResult.NotFound
+            if (title == "" && description == "" && imageUrl == "") return OgImageResult.NotFound
 
-            val (blob, contentType) = if (imageUrl != null) {
+            val (blob, contentType) = if (imageUrl != "") {
                 getByteArrayFromUrl(imageUrl) ?: (null to null)
             } else {
                 null to null
