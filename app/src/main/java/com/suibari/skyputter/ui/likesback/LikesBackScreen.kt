@@ -30,6 +30,7 @@ fun LikesBackScreen(
         viewModel = viewModel,
         isRefreshing = false,
         isLoadingMore = viewModel.isLoadingMore,
+        onBack = { onNavigateToMain() },
         onRefresh = {
             viewModel.loadInitialItems(25)
         },

@@ -47,6 +47,7 @@ fun NotificationListScreen(
         viewModel = viewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
+        onBack = { onNavigateToMain() },
         onRefresh = {
             viewModel.markAllAsReadAndReload()
         },

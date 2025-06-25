@@ -3,19 +3,27 @@ package com.suibari.skyputter.ui.main
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,6 +55,8 @@ fun MainScreen(
     onOpenUserPost: () -> Unit,
 //    onOpenLikesBack: () -> Unit,
     onOpenDraft: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenAbout: () -> Unit,
     onDraftTextCleared: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -125,6 +135,7 @@ fun MainScreen(
                     ProfileMenu(
                         profile = profile,
                         onOpenUserPost = onOpenUserPost,
+                        onOpenAbout = onOpenAbout,
                         onLogout = {
                             coroutineScope.launch {
                                 SessionManager.clearSession()
@@ -254,18 +265,32 @@ fun MainScreen(
 private fun ProfileMenu(
     profile: ActorDefsProfileViewDetailed?,
     onOpenUserPost: () -> Unit,
+    onOpenAbout: () -> Unit,
     onLogout: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    IconButton(onClick = { expanded = true }) {
+    Box(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .size(48.dp)
+            .clip(CircleShape) // 丸く切り抜いてから...
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { onOpenUserPost() },   // 通常タップ
+                    onLongPress = { expanded = true } // 長押しでメニュー表示
+                )
+            }
+    ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(profile?.avatar)
                 .crossfade(true)
                 .build(),
             contentDescription = "avatar",
-            modifier = Modifier.size(48.dp)
+            contentScale = ContentScale.Crop, // クロップする必要あり
+            modifier = Modifier
+                .fillMaxSize()
         )
 
         DropdownMenu(
@@ -273,9 +298,9 @@ private fun ProfileMenu(
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("プロフィール") },
+                text = { Text("About") },
                 onClick = {
-                    onOpenUserPost()
+                    onOpenAbout()
                     expanded = false
                 }
             )

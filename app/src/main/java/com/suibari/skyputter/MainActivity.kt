@@ -1,5 +1,6 @@
 package com.suibari.skyputter
 
+import android.app.Application
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import android.content.Context
 import android.content.Intent
@@ -15,6 +16,7 @@ import com.suibari.skyputter.data.repository.LikesBackRepository
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.NotificationRepoProvider
 import com.suibari.skyputter.data.repository.UserPostRepository
+import com.suibari.skyputter.ui.about.AboutScreen
 import com.suibari.skyputter.ui.draft.DraftScreen
 import com.suibari.skyputter.ui.likesback.LikesBackScreen
 import com.suibari.skyputter.ui.likesback.LikesBackViewModel
@@ -72,7 +74,7 @@ class MainActivity : ComponentActivity() {
                 Log.d("MainActivity", "initializeApp: start")
 
                 // SessionManager初期化
-                SessionManager.initialize(applicationContext)
+//                SessionManager.initialize(applicationContext)
 
                 // セッション取得（重い処理の可能性があるため別スレッド）
                 val session = SessionManager.getSession()
@@ -221,6 +223,12 @@ class MainActivity : ComponentActivity() {
                                 onOpenDraft = {
                                     navController.navigate(Screen.Draft.route)
                                 },
+                                onOpenSettings = {
+                                    navController.navigate(Screen.Settings.route)
+                                },
+                                onOpenAbout = {
+                                    navController.navigate(Screen.About.route)
+                                },
                                 onDraftTextCleared = {
                                     // 下書きテキストをクリア
                                     selectedDraftText = ""
@@ -277,6 +285,9 @@ class MainActivity : ComponentActivity() {
                             UserPostListScreen(
                                 viewModel = userPostVM,
                                 myDid = myDid!!,
+                                onNavigateToMain = {
+                                    navController.navigate("main")
+                                },
                             )
                         } ?: LoadingScreen()
                     }
@@ -284,28 +295,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            composable(Screen.LikesBack.route) {
-                when (initState) {
-                    is ViewModelContainer.InitializationState.Completed -> {
-                        val likesBackVM = viewModelContainer.likesBackViewModel
-                        val mainVM = viewModelContainer.mainViewModel
-
-                        if (likesBackVM != null && mainVM != null) {
-                            LikesBackScreen(
-                                viewModel = likesBackVM,
-                                mainViewModel = mainVM,
-                                myDid = myDid!!,
-                                onNavigateToMain = {
-                                    navController.navigate("main")
-                                }
-                            )
-                        } else {
-                            LoadingScreen()
-                        }
-                    }
-                    else -> LoadingScreen()
-                }
-            }
+//            composable(Screen.LikesBack.route) {
+//                when (initState) {
+//                    is ViewModelContainer.InitializationState.Completed -> {
+//                        val likesBackVM = viewModelContainer.likesBackViewModel
+//                        val mainVM = viewModelContainer.mainViewModel
+//
+//                        if (likesBackVM != null && mainVM != null) {
+//                            LikesBackScreen(
+//                                viewModel = likesBackVM,
+//                                mainViewModel = mainVM,
+//                                myDid = myDid!!,
+//                                onNavigateToMain = {
+//                                    navController.navigate("main")
+//                                }
+//                            )
+//                        } else {
+//                            LoadingScreen()
+//                        }
+//                    }
+//                    else -> LoadingScreen()
+//                }
+//            }
 
             composable(Screen.Draft.route) {
                 when (initState) {
@@ -336,6 +347,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                    }
+                    else -> LoadingScreen()
+                }
+            }
+
+            composable(Screen.About.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        AboutScreen()
                     }
                     else -> LoadingScreen()
                 }
@@ -418,6 +438,7 @@ class ViewModelContainer(private val context: Context) {
                 // ViewModelの作成（メインスレッドで作成）
                 withContext(Dispatchers.Main) {
                     Log.d("ViewModelContainer", "Creating ViewModels...")
+                    val application = context.applicationContext as Application
 
                     notificationViewModel = NotificationViewModel(
                         repo = notificationRepo,
