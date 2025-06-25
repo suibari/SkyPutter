@@ -190,12 +190,14 @@ fun MainScreen(
                     isPosting = uiState.isPosting,
                     enabled = postText.isNotBlank() && !uiState.isPosting,
                     onClick = {
-                        viewModel.post(postText, embeds) {
-                            // 投稿成功時の処理
-                            postText = ""
-                            viewModel.clearEmbed()
-                            viewModel.clearReplyContext()
-                            lastFetchedUrl = null
+                        coroutineScope.launch {
+                            viewModel.post(postText, embeds) {
+                                // 投稿成功時の処理（コルーチン内なのでOK）
+                                postText = ""
+                                viewModel.clearEmbed()
+                                viewModel.clearReplyContext()
+                                lastFetchedUrl = null
+                            }
                         }
                     }
                 )
