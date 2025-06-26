@@ -159,7 +159,9 @@ fun MainScreen(
             )
         },
         bottomBar = {
-            BottomAppBar {
+            BottomAppBar(
+                modifier = Modifier.imePadding() // キーボードの上まで押し上げる
+            ) {
                 IconButton(
                     onClick = { imageLauncher.launch(arrayOf("image/*")) },
                     enabled = !uiState.isPosting
