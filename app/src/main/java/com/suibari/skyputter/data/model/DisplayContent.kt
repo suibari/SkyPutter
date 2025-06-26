@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -50,14 +51,19 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.ui.theme.spacePadding
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import java.time.Instant
 import java.time.Duration
-import java.time.format.DateTimeFormatter
-import java.time.ZoneOffset
-import java.time.temporal.ChronoUnit
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+
 
 data class DisplayImage (
     val urlThumb: String,
@@ -165,7 +171,7 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
     }
 
     if (video != null) {
-        DisplayVideo(video.playlist)
+        DisplayVideo(video.playlist, video.aspectRatio)
     }
 
     if (!date.isNullOrBlank()) {
@@ -197,18 +203,63 @@ fun formatRelativeTime(dateString: String): String {
 
 @Composable
 fun DisplayImages(
-    images: List<DisplayImage>?,
+    images: List<DisplayImage>, // 4枚想定
     onImageClick: (String?) -> Unit
 ) {
-    if (!images.isNullOrEmpty()) {
-        Row {
-            images.forEach { image ->
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        // 1行目: images[0], images[1]
+        Row(modifier = Modifier.fillMaxWidth()) {
+            images.getOrNull(0)?.let { image ->
                 AsyncImage(
                     model = image.urlThumb,
                     contentDescription = image.alt,
                     modifier = Modifier
-                        .size(100.dp)
-                        .clickable { onImageClick(image.urlFullsize) }
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .padding(4.dp)
+                        .clickable { onImageClick(image.urlFullsize) },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            images.getOrNull(1)?.let { image ->
+                AsyncImage(
+                    model = image.urlThumb,
+                    contentDescription = image.alt,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .padding(4.dp)
+                        .clickable { onImageClick(image.urlFullsize) },
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        // 2行目: images[2], images[3]
+        Row(modifier = Modifier.fillMaxWidth()) {
+            images.getOrNull(2)?.let { image ->
+                AsyncImage(
+                    model = image.urlThumb,
+                    contentDescription = image.alt,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .padding(4.dp)
+                        .clickable { onImageClick(image.urlFullsize) },
+                    contentScale = ContentScale.Crop
+                )
+            }
+            images.getOrNull(3)?.let { image ->
+                AsyncImage(
+                    model = image.urlThumb,
+                    contentDescription = image.alt,
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .padding(4.dp)
+                        .clickable { onImageClick(image.urlFullsize) },
+                    contentScale = ContentScale.Crop
                 )
             }
         }
@@ -251,8 +302,14 @@ fun ZoomableImageDialog(imageUrl: String?, onDismiss: (() -> Unit)?) {
 @Composable
 fun DisplayVideo(
     videoUrl: String,
+    aspectRatio: EmbedDefsAspectRatio?,
 ) {
     val context = LocalContext.current
+    val aspectRatioFloat = if (aspectRatio != null && aspectRatio.width != 0 && aspectRatio.height != 0) {
+        aspectRatio.width.toFloat() / aspectRatio.height
+    } else {
+        1.0f
+    }
 
     val exoPlayer = remember {
         // 明示的に HLS 対応の MediaSourceFactory を指定
@@ -283,7 +340,7 @@ fun DisplayVideo(
             }
         },
         modifier = Modifier
-            .size(200.dp)
+            .aspectRatio(aspectRatioFloat)
     )
 }
 
