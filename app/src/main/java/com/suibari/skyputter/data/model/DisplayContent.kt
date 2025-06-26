@@ -49,6 +49,11 @@ import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
+import java.time.Instant
+import java.time.Duration
+import java.time.format.DateTimeFormatter
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 
 data class DisplayImage (
     val urlThumb: String,
@@ -156,10 +161,28 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
 
     if (!date.isNullOrBlank()) {
         Text(
-            text = date,
+            text = formatRelativeTime(date),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.outline,
         )
+    }
+}
+
+fun formatRelativeTime(dateString: String): String {
+    return try {
+        val dateTime = Instant.parse(dateString)
+        val now = Instant.now()
+        val duration = Duration.between(dateTime, now)
+
+        when {
+            duration.seconds < 60 -> "今"
+            duration.toMinutes() < 60 -> "${duration.toMinutes()}分前"
+            duration.toHours() < 24 -> "${duration.toHours()}時間前"
+            else -> "${duration.toDays()}日前"
+        }
+    } catch (e: Exception) {
+        // パースできなかった場合は元の文字列を返す
+        dateString
     }
 }
 

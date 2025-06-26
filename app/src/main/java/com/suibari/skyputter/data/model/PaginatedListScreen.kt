@@ -28,6 +28,7 @@ import com.suibari.skyputter.ui.type.HasUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -61,16 +62,18 @@ fun <T : HasUri> PaginatedListScreen(
     }
 
     val onQuote = { ref: RepoStrongRef ->
-        coroutineScope.launch {
+        coroutineScope.launch(Dispatchers.IO) {
             val post = viewModel.getRecord(ref)
-            mainViewModel.addEmbed(
-                AttachedEmbed(
-                    type = BlueskyTypes.EmbedRecord,
-                    ref = ref,
-                    post = post,
+            withContext(Dispatchers.Main) {
+                mainViewModel.addEmbed(
+                    AttachedEmbed(
+                        type = BlueskyTypes.EmbedRecord,
+                        ref = ref,
+                        post = post,
+                    )
                 )
-            )
-            onBack()
+                onBack()
+            }
         }
         Unit
     }
