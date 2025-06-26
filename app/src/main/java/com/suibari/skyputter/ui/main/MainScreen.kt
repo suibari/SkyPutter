@@ -62,7 +62,7 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var postText by remember { mutableStateOf("") }
+    var postText = viewModel.postText
     val uiState by viewModel.uiState
     val profile by viewModel.profile
     val embeds = viewModel.embeds
@@ -80,7 +80,7 @@ fun MainScreen(
     // 下書きから選択されたテキストを設定
     LaunchedEffect(initialText) {
         if (initialText.isNotEmpty()) {
-            postText = initialText
+            viewModel.postText = initialText
             onDraftTextCleared() // テキスト設定後にクリア
         }
     }
@@ -171,12 +171,12 @@ fun MainScreen(
 
                 // 下書きボタンを追加
                 DraftButton(
-                    postText = postText,
+                    postText = viewModel.postText,
                     viewModel = draftViewModel,
                     onOpenDraft = onOpenDraft,
                     onDraftSaved = {
                         // 下書き保存成功時、テキストクリア
-                        postText = ""
+                        viewModel.postText = ""
                     }
                 )
 
@@ -189,7 +189,7 @@ fun MainScreen(
                         coroutineScope.launch {
                             viewModel.post(postText, embeds) {
                                 // 投稿成功時の処理（コルーチン内なのでOK）
-                                postText = ""
+                                viewModel.postText = ""
                                 viewModel.clearEmbed()
                                 viewModel.clearReplyContext()
                                 lastFetchedUrl = null
@@ -208,16 +208,16 @@ fun MainScreen(
             // メインコンテンツ
             MainContent(
                 modifier = Modifier.fillMaxSize(),
-                postText = postText,
-                onPostTextChange = { newText ->
-                    postText = newText
+                postText = viewModel.postText,
+                onPostTextChange = { it ->
+                    viewModel.postText = it
 
                     // URL検出とOG画像取得
-                    val match = urlRegex.find(newText)
+                    val match = urlRegex.find(it)
                     val foundUrl = match?.value?.trim()
 
                     // テキスト全消去 → URL履歴をリセット
-                    if (newText.isBlank()) {
+                    if (it.isBlank()) {
                         lastFetchedUrl = null
                         return@MainContent
                     }

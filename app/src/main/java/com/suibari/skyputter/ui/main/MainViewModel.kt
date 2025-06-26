@@ -60,6 +60,9 @@ class MainViewModel(
     // デバイス通知からの遷移用
     val navigateToNotification = MutableSharedFlow<Unit>()
 
+    // postText保持用
+    var postText by mutableStateOf("")
+
     private var initializing = false
     fun initialize(context: Context) {
         // 初期化中の初期化を含め、1度だけ初期化

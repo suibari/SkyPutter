@@ -14,11 +14,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -88,23 +92,28 @@ fun DisplayHeader(
             if (reason != null) {
                 when (reason) {
                     "reply" -> Icon(
-                        Icons.Default.Share,
+                        Icons.Default.Reply,
                         contentDescription = "リプライ",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                     "repost" -> Icon(
-                        Icons.Default.Refresh,
+                        Icons.Default.Repeat,
                         contentDescription = "リポスト",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                     "like" -> Icon(
                         Icons.Default.FavoriteBorder,
-                        contentDescription = "リポスト",
+                        contentDescription = "いいね",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                     "follow" -> Icon(
                         Icons.Default.Face,
                         contentDescription = "フォロー",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                    "quote" -> Icon(
+                        Icons.Default.FormatQuote,
+                        contentDescription = "引用",
                         tint = MaterialTheme.colorScheme.onBackground,
                     )
                     "unknown" -> Icon(
@@ -299,7 +308,7 @@ fun DisplayActions(
         Row {
             if (feed?.asFeedPost != null) {
                 Icon(
-                    Icons.Default.Share,
+                    Icons.Default.Reply,
                     contentDescription = "リプライ",
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier
@@ -323,7 +332,7 @@ fun DisplayActions(
                         }
                 )
                 Icon(
-                    Icons.Default.Refresh,
+                    Icons.Default.Repeat,
                     contentDescription = "リポスト",
                     tint = repostColor,
                     modifier = Modifier
@@ -335,7 +344,7 @@ fun DisplayActions(
                         }
                 )
                 Icon(
-                    Icons.Default.ExitToApp,
+                    Icons.Default.FormatQuote,
                     contentDescription = "引用",
                     tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.clickable {

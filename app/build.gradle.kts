@@ -78,6 +78,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.6.1")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("androidx.compose.material3:material3:1.3.2") // PullRefresh対応バージョン以降
+    implementation("androidx.compose.material:material-icons-extended:x.x.x") // Icons
 
     // 下書き機能
     implementation("com.google.code.gson:gson:2.10.1")
