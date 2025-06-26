@@ -15,6 +15,7 @@ import com.suibari.skyputter.data.repository.ProfileResult
 import com.suibari.skyputter.data.repository.OgImageResult
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
@@ -57,11 +58,14 @@ class MainViewModel(
     val embeds: List<AttachedEmbed> get() = _embeds
 
     // デバイス通知からの遷移用
-    val navigateToNotification = mutableStateOf(false)
+    val navigateToNotification = MutableSharedFlow<Unit>()
 
+    private var initializing = false
     fun initialize(context: Context) {
-        if (_uiState.value.isInitialized) return
+        // 初期化中の初期化を含め、1度だけ初期化
+        if (_uiState.value.isInitialized || initializing) return
 
+        initializing = true
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
@@ -105,6 +109,8 @@ class MainViewModel(
                     isLoading = false,
                     errorMessage = "初期化に失敗しました: ${e.message}"
                 )
+            } finally {
+                initializing = false
             }
         }
     }
@@ -193,8 +199,13 @@ class MainViewModel(
         }
     }
 
+    /**
+     * 使用禁止
+     */
     fun onNavigatedToNotification() {
-        navigateToNotification.value = false
+        viewModelScope.launch {
+            navigateToNotification.emit(Unit)
+        }
     }
 
     // 下位互換性のために残す

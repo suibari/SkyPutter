@@ -71,10 +71,9 @@ fun MainScreen(
     var lastFetchedUrl by remember { mutableStateOf<String?>(null) }
 
     // デバイス通知からの遷移イベント監視
-    LaunchedEffect(viewModel.navigateToNotification.value) {
-        if (viewModel.navigateToNotification.value) {
-            onOpenNotification() // ← navController.navigate(Screen.NotificationList.route)
-            viewModel.onNavigatedToNotification()
+    LaunchedEffect(Unit) {
+        viewModel.navigateToNotification.collect {
+            onOpenNotification()
         }
     }
 
@@ -84,11 +83,6 @@ fun MainScreen(
             postText = initialText
             onDraftTextCleared() // テキスト設定後にクリア
         }
-    }
-
-    // 初期化処理
-    LaunchedEffect(Unit) {
-        viewModel.initialize(context)
     }
 
     // エラーメッセージ表示用のSnackbarHost

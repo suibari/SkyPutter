@@ -185,6 +185,10 @@ class MainActivity : ComponentActivity() {
 
             composable(Screen.Main.route) {
                 Log.d("MainActivity", "Main screen composable, initState: $initState")
+                // 全く同一のインスタンスなのに、composableが変更されたと認識され再生成される...
+                // 何故か分からないが、実害がないのでいったん放置
+//                Log.d("MainActivity", "Main screen - ViewModelContainer: $viewModelContainer")
+//                Log.d("MainActivity", "Main screen - MainViewModel: ${viewModelContainer.mainViewModel}")
 
                 // ViewModelが初期化完了している場合のみ表示
                 when (initState) {
@@ -264,7 +268,10 @@ class MainActivity : ComponentActivity() {
                                 viewModel = notificationVM,
                                 mainViewModel = mainVM,
                                 onNavigateToMain = {
-                                    navController.navigate("main")
+                                    navController.navigate("main") {
+                                        Log.d("Nav", "Navigating to Main")
+                                        navController.popBackStack()
+                                    }
                                 }
                             )
                         } else {
@@ -284,7 +291,10 @@ class MainActivity : ComponentActivity() {
                                 mainViewModel = viewModelContainer.mainViewModel!!,
                                 myDid = myDid!!,
                                 onNavigateToMain = {
-                                    navController.navigate("main")
+                                    navController.navigate("main") {
+                                        Log.d("Nav", "Navigating to Main")
+                                        navController.popBackStack()
+                                    }
                                 },
                             )
                         } ?: LoadingScreen()
@@ -325,7 +335,9 @@ class MainActivity : ComponentActivity() {
                             DraftScreen(
                                 draftViewModel = draftVM,
                                 onBack = {
-                                    navController.popBackStack()
+                                    navController.navigate("main") {
+                                        popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
+                                    }
                                 },
                                 onDraftSelected = { text, draftId ->
                                     selectedDraftText = text // 先に更新
@@ -338,6 +350,7 @@ class MainActivity : ComponentActivity() {
                                         }
 
                                         withContext(Dispatchers.Main) {
+                                            Log.d("Nav", "Navigating to Main")
                                             // ここでpopBackStack() すると2重呼び出しで画面が真っ白になる
                                             navController.navigate("main")
                                         }
@@ -372,8 +385,8 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch(Dispatchers.Main) {
                 viewModelContainer.notificationViewModel?.targetUri = postUri
 
-                // 今回は MainViewModel 経由で MainScreen → 通知画面に遷移させる方法が自然
-                viewModelContainer.mainViewModel?.navigateToNotification?.value = true
+                // 通知画面へのナビゲーション要求を emit（SharedFlow 用）
+                viewModelContainer.mainViewModel?.navigateToNotification?.emit(Unit)
             }
         }
     }
@@ -405,8 +418,10 @@ class ViewModelContainer(private val context: Context) {
 
     suspend fun initializeViewModels() {
         // 既に完了している場合はスキップ
-        if (_initializationState is InitializationState.Completed) {
-            Log.d("ViewModelContainer", "ViewModels already initialized")
+        if (_initializationState is InitializationState.Completed &&
+            mainViewModel != null &&
+            notificationViewModel != null) {
+            Log.d("ViewModelContainer", "ViewModels already initialized, skipping")
             return
         }
 
@@ -448,6 +463,9 @@ class ViewModelContainer(private val context: Context) {
                         userPostViewModel = userPostViewModel!!,
                         notificationViewModel = notificationViewModel!!,
                     )
+
+                    // 初期化処理
+                    mainViewModel?.initialize(context)
 
                     Log.d("ViewModelContainer", "ViewModels created successfully")
                 }
