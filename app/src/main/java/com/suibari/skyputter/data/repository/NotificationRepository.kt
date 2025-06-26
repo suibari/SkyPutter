@@ -9,6 +9,7 @@ import androidx.core.content.edit
 import com.suibari.skyputter.data.model.BskyPostActionRepository
 import com.suibari.skyputter.ui.type.DisplayNotification
 import com.suibari.skyputter.util.SessionManager
+import work.socialhub.kbsky.api.entity.app.bsky.notification.NotificationUpdateSeenRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import java.time.Instant
@@ -174,11 +175,28 @@ class NotificationRepository (
         Log.d("NotificationRepository", "Marked ${notifs.size} notifications as notified")
     }
 
-    fun markAllAsRead() {
+    suspend fun markAllAsRead() {
         latestNotifIndexedAt?.let {
             lastSeenNotifIndexedAt = it
             prefs.edit {
                 putString(KEY_LAST_SEEN, it)
+            }
+        }
+    }
+
+    suspend fun updateSeenToLatest() {
+        latestNotifIndexedAt?.let { indexedAt ->
+            val seenAt = Instant.parse(indexedAt).plusSeconds(1).toString()
+
+            SessionManager.runWithAuthRetry { auth ->
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .notification()
+                    .updateSeen(
+                        NotificationUpdateSeenRequest(auth).also {
+                            it.seenAt = seenAt
+                        }
+                    )
             }
         }
     }

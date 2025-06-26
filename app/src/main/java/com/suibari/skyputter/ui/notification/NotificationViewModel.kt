@@ -41,6 +41,9 @@ class NotificationViewModel(
                 val (notifs, newCursor) = fetchItems(limit)
                 val updated = notifs.map { it.copy(isNew = false) }
 
+                // フェッチして最新取得通知時刻を更新した後、updateSeen
+                repo.updateSeenToLatest()
+
                 _items.clear()
                 _items.addAll(updated)
                 cursor = newCursor
