@@ -105,19 +105,41 @@ fun MainScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             viewModel.clearEmbed() // ループの外で一度だけクリア
+
             uris.take(4).forEach { uri ->
                 val (blob, contentType, aspectRatio) = Util.getByteArrayFromUri(context, uri)
-                val filename = Util.getFileName(context, uri) ?: "image.jpg"
-                viewModel.addEmbed(
-                    AttachedEmbed(
-                        type = BlueskyTypes.EmbedImages,
-                        filename = filename,
-                        imageUriString = uri.toString(),
-                        blob = blob,
-                        contentType = contentType,
-                        aspectRatio = aspectRatio
-                    )
-                )
+                val filename = Util.getFileName(context, uri) ?: "media.dat"
+
+                when {
+                    contentType?.startsWith("image/") == true -> {
+                        viewModel.addEmbed(
+                            AttachedEmbed(
+                                type = BlueskyTypes.EmbedImages,
+                                filename = filename,
+                                imageUriString = uri.toString(),
+                                blob = blob,
+                                contentType = contentType,
+                                aspectRatio = aspectRatio,
+                            )
+                        )
+                    }
+
+                    contentType?.startsWith("video/") == true -> {
+                        viewModel.addEmbed(
+                            AttachedEmbed(
+                                type = BlueskyTypes.EmbedVideo,
+                                filename = filename,
+                                blob = blob,
+                                contentType = contentType,
+                                aspectRatio = aspectRatio,
+                            )
+                        )
+                    }
+
+                    else -> {
+                        // Ignore
+                    }
+                }
             }
         }
     }
@@ -163,7 +185,7 @@ fun MainScreen(
                 modifier = Modifier.imePadding() // キーボードの上まで押し上げる
             ) {
                 IconButton(
-                    onClick = { imageLauncher.launch(arrayOf("image/*")) },
+                    onClick = { imageLauncher.launch(arrayOf("image/*", "video/*")) },
                     enabled = !uiState.isPosting
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "画像添付")
@@ -630,6 +652,10 @@ private fun AttachedImageCard(
                                     )
                                 }
                             }
+                        }
+                        // 動画: TODO
+                        embed.type == BlueskyTypes.EmbedVideo -> {
+                            Text("動画")
                         }
                     }
                 }
