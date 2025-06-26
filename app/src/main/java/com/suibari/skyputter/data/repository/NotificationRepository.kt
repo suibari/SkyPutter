@@ -70,7 +70,7 @@ class NotificationRepository (
         val viewerStatusMap = fetchViewerStatusMap(replyUris)
 
         val result = notifs.map { notif ->
-            val isNew = lastSeenNotifIndexedAt?.let { notif.indexedAt > it } ?: true
+            val isNew = !notif.isRead
             val parentPostRecord = notif.record.asFeedPost?.reply?.parent
                 ?: notif.record.asFeedRepost?.subject
                 ?: notif.record.asFeedLike?.subject
@@ -92,7 +92,10 @@ class NotificationRepository (
             )
         }
 
-        latestNotifIndexedAt = notifs.firstOrNull()?.indexedAt
+        // updateSeen 用に最新の indexedAt を記録（isRead == false の中で最大のもの）
+        latestNotifIndexedAt = notifs
+            .filter { !it.isRead }
+            .maxByOrNull { it.indexedAt }?.indexedAt
 
         return Pair(result, newCursor)
     }

@@ -36,12 +36,13 @@ class NotificationViewModel(
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
+                // アプリ側の履歴更新（ユーザーが見たことにする）
                 repo.markAllAsRead()
 
                 val (notifs, newCursor) = fetchItems(limit)
                 val updated = notifs.map { it.copy(isNew = false) }
 
-                // フェッチして最新取得通知時刻を更新した後、updateSeen
+                // サーバ側にも既読情報を送る
                 repo.updateSeenToLatest()
 
                 _items.clear()
