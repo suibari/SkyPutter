@@ -16,7 +16,6 @@ import com.suibari.skyputter.data.repository.OgImageResult
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -97,7 +96,6 @@ class MainViewModel(
                 Log.d("MainViewModel", "loading child view models")
                 userPostViewModel.loadInitialItemsIfNeeded()
                 notificationViewModel.loadInitialItemsIfNeeded()
-//                likesBackViewModel.loadInitialItemsIfNeeded()
 
                 Log.d("MainViewModel", "initialization finished")
                 _uiState.value = _uiState.value.copy(
