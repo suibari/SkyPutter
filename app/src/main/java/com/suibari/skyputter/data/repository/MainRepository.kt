@@ -1,5 +1,6 @@
 package com.suibari.skyputter.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
@@ -59,12 +60,13 @@ class MainRepository {
     }
 
     suspend fun postText(
+        context: Context,
         postText: String,
         embeds: List<AttachedEmbed>?,
         replyTo: FeedPostReplyRef? = null
     ): PostResult {
         return try {
-            val embedUnion = createEmbedUnion(embeds)
+            val embedUnion = createEmbedUnion(context, embeds)
             val (displayText, facets) = extractTextAndFacets(postText)
 
             SessionManager.runWithAuthRetry { auth ->
@@ -130,7 +132,7 @@ class MainRepository {
                     description = ogDescription.takeIf { it.isNotEmpty() },
                     filename = "ogp.$ext",
                     urlString = finalUrl,
-                    imageUriString = ogImage,
+                    uriString = ogImage,
                     blob = imageData,
                     contentType = contentType,
                     aspectRatio = null
@@ -212,7 +214,7 @@ class MainRepository {
                 description = description,
                 filename = if (blob != null) "ogp.$ext" else null,
                 urlString = url,
-                imageUriString = imageUrl,
+                uriString = imageUrl,
                 blob = blob,
                 contentType = contentType,
                 aspectRatio = null

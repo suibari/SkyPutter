@@ -118,7 +118,7 @@ class MainViewModel(
         }
     }
 
-    fun post(postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
+    fun post(context: Context, postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
         if (_uiState.value.isPosting) return
 
         viewModelScope.launch {
@@ -126,7 +126,7 @@ class MainViewModel(
 
             val replyRef = createReplyRef()
 
-            when (val result = repo.postText(postText, embeds, replyRef)) {
+            when (val result = repo.postText(context, postText, embeds, replyRef)) {
                 is PostResult.Success -> {
                     _uiState.value = _uiState.value.copy(isPosting = false)
                     onSuccess()

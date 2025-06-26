@@ -15,7 +15,7 @@ data class AttachedEmbed(
     var description: String? = null,
     // Images
     var filename: String? = null,
-    var imageUriString: String? = null,
+    var uriString: String? = null,
     var blob: ByteArray? = null,
     var contentType: String? = null,
     var aspectRatio: EmbedDefsAspectRatio? = null,
@@ -23,8 +23,8 @@ data class AttachedEmbed(
     var ref: RepoStrongRef? = null,
     var post: FeedPost? = null,
 ) {
-    val imageUri: Uri?
-        get() = imageUriString?.toUri()
+    val uri: Uri?
+        get() = uriString?.toUri()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

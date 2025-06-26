@@ -1,8 +1,14 @@
 package com.suibari.skyputter.data.repository
 
+import android.content.Context
 import android.util.Log
+import androidx.compose.ui.platform.LocalContext
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
+import com.suibari.skyputter.util.Util.processVideoForUpload
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.video.VideoGetJobStatusRequest
@@ -26,34 +32,36 @@ import kotlin.time.ExperimentalTime
 
 object EmbedBuilder {
 
-    suspend fun createEmbedUnion(embeds: List<AttachedEmbed>?): EmbedUnion? {
-        if (embeds.isNullOrEmpty()) return null
+    suspend fun createEmbedUnion(context: Context, embeds: List<AttachedEmbed>?): EmbedUnion? =
+        withContext(Dispatchers.IO) {
+            if (embeds.isNullOrEmpty()) return@withContext null
 
-        // urlStringがセット -> リンクカード
-        embeds.firstOrNull { it.type == BlueskyTypes.EmbedExternal }?.let {
-            return createExternalEmbed(it)
-        }
-
-        // 画像blobがセット -> 画像
-        embeds.firstOrNull { it.type == BlueskyTypes.EmbedImages }?.let {
-            val imageEmbeds = embeds.filter { it.blob != null }
-            if (imageEmbeds.isNotEmpty()) {
-                return createImageEmbed(imageEmbeds)
+            // urlStringがセット -> リンクカード
+            embeds.firstOrNull { it.type == BlueskyTypes.EmbedExternal }?.let {
+                return@let createExternalEmbed(it)
             }
-        }
 
-        // 引用
-        embeds.firstOrNull { it.type == BlueskyTypes.EmbedRecord }?.let {
-            return createRecordEmbed(it)
-        }
+            // 画像blobがセット -> 画像
+            embeds.firstOrNull { it.type == BlueskyTypes.EmbedImages }?.let {
+                val imageEmbeds = embeds.filter { it.blob != null }
+                if (imageEmbeds.isNotEmpty()) {
+                    return@withContext createImageEmbed(imageEmbeds)
+                }
+            }
 
-        // 動画
-        embeds.firstOrNull { it.type == BlueskyTypes.EmbedVideo }?.let {
-            return createVideoEmbed(it)
-        }
+            // 引用
+            embeds.firstOrNull { it.type == BlueskyTypes.EmbedRecord }?.let {
+                return@withContext createRecordEmbed(it)
+            }
 
-        return null
-    }
+            // 動画
+            embeds.firstOrNull { it.type == BlueskyTypes.EmbedVideo && it.uriString != null }?.let {
+                it.blob = processVideoForUpload(context, it.uri!!) // RepoでByteArrayに変換
+                return@withContext createVideoEmbed(it)
+            }
+
+            return@withContext null
+        }
 
     private suspend fun createExternalEmbed(embed: AttachedEmbed): EmbedExternal {
         return EmbedExternal().apply {
@@ -147,6 +155,7 @@ object EmbedBuilder {
             }
 
             var blob: Blob? = null
+
             for (i in 0 until 60) {
                 val statusResponse = SessionManager.runWithAuthRetry { auth ->
                     BlueskyFactory
@@ -166,9 +175,9 @@ object EmbedBuilder {
                     break
                 }
 
-                // Waiting 1s
+                // 🔁 Thread.sleep → ✅ suspend-safe delay
                 Log.i("EmbedBuilder", "getJobStatus: processing")
-                Thread.sleep(1000)
+                delay(1000)
             }
 
             if (blob == null) {

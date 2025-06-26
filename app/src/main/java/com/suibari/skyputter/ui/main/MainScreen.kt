@@ -37,7 +37,9 @@ import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -100,44 +102,66 @@ fun MainScreen(
     }
 
     // 画像選択用ランチャー
+    // MainScreenで画像選択処理を最適化
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
-            viewModel.clearEmbed() // ループの外で一度だけクリア
-
-            uris.take(4).forEach { uri ->
-                val (blob, contentType, aspectRatio) = Util.getByteArrayFromUri(context, uri)
-                val filename = Util.getFileName(context, uri) ?: "media.dat"
-
-                when {
-                    contentType?.startsWith("image/") == true -> {
-                        viewModel.addEmbed(
-                            AttachedEmbed(
-                                type = BlueskyTypes.EmbedImages,
-                                filename = filename,
-                                imageUriString = uri.toString(),
-                                blob = blob,
-                                contentType = contentType,
-                                aspectRatio = aspectRatio,
-                            )
-                        )
+            // コルーチンでバックグラウンド処理
+            coroutineScope.launch {
+                withContext(Dispatchers.IO) {
+                    withContext(Dispatchers.Main) {
+                        viewModel.clearEmbed() // メインスレッドで実行
                     }
 
-                    contentType?.startsWith("video/") == true -> {
-                        viewModel.addEmbed(
-                            AttachedEmbed(
-                                type = BlueskyTypes.EmbedVideo,
-                                filename = filename,
-                                blob = blob,
-                                contentType = contentType,
-                                aspectRatio = aspectRatio,
-                            )
-                        )
-                    }
+                    uris.take(4).forEach { uri ->
+                        try {
+                            val contentType = context.contentResolver.getType(uri)
+                            val filename = Util.getFileName(context, uri) ?: "media.dat"
 
-                    else -> {
-                        // Ignore
+                            when {
+                                contentType?.startsWith("image/") == true -> {
+                                    // 画像の場合は軽量処理
+                                    val (blob, actualContentType, aspectRatio) =
+                                        Util.getOptimizedImageFromUri(context, uri)
+
+                                    withContext(Dispatchers.Main) {
+                                        viewModel.addEmbed(
+                                            AttachedEmbed(
+                                                type = BlueskyTypes.EmbedImages,
+                                                filename = filename,
+                                                uriString = uri.toString(),
+                                                blob = blob,
+                                                contentType = actualContentType,
+                                                aspectRatio = aspectRatio,
+                                            )
+                                        )
+                                    }
+                                }
+
+                                contentType?.startsWith("video/") == true -> {
+                                    // 動画の場合はメタデータのみ取得、実際の処理は投稿時
+                                    val aspectRatio = Util.getVideoAspectRatio(context, uri)
+
+                                    withContext(Dispatchers.Main) {
+                                        viewModel.addEmbed(
+                                            AttachedEmbed(
+                                                type = BlueskyTypes.EmbedVideo,
+                                                filename = filename,
+                                                uriString = uri.toString(), // URIのみ保持
+                                                blob = null, // 投稿時に処理
+                                                contentType = contentType,
+                                                aspectRatio = aspectRatio,
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+//                            withContext(Dispatchers.Main) {
+//                                viewModel.showError("ファイル読み込みエラー: ${e.message}")
+//                            }
+                        }
                     }
                 }
             }
@@ -211,7 +235,7 @@ fun MainScreen(
                     enabled = postText.isNotBlank() && !uiState.isPosting,
                     onClick = {
                         coroutineScope.launch {
-                            viewModel.post(postText, embeds) {
+                            viewModel.post(context, postText, embeds) {
                                 // 投稿成功時の処理（コルーチン内なのでOK）
                                 viewModel.postText = ""
                                 viewModel.clearEmbed()
@@ -559,13 +583,13 @@ private fun AttachedImageCard(
                 ) {
                     when {
                         // imageUrlもtitleもある場合：左に画像、右にtitle/description
-                        embed.type == BlueskyTypes.EmbedExternal && embed.imageUri != null -> {
+                        embed.type == BlueskyTypes.EmbedExternal && embed.uri != null -> {
                             Row(
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
-                                        .data(embed.imageUri)
+                                        .data(embed.uri)
                                         .crossfade(true)
                                         .build(),
                                     contentDescription = "OG Image",
@@ -602,7 +626,7 @@ private fun AttachedImageCard(
                         embed.type == BlueskyTypes.EmbedImages -> {
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
-                                    .data(embed.imageUri)
+                                    .data(embed.uri)
                                     .crossfade(true)
                                     .build(),
                                 contentDescription = "Attached Image",
