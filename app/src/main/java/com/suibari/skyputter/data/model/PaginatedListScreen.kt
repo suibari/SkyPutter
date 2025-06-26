@@ -22,10 +22,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.suibari.skyputter.ui.main.AttachedEmbed
+import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.ui.type.HasUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.BlueskyTypes
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,16 +39,41 @@ fun <T : HasUri> PaginatedListScreen(
     title: String,
     items: List<T>,
     viewModel: PaginatedListViewModel<T>,
+    mainViewModel: MainViewModel,
     isRefreshing: Boolean,
     isLoadingMore: Boolean,
     onBack: () -> Unit,
     onRefresh: suspend () -> Unit,
     onLoadMore: suspend () -> Unit,
     itemKey: (T) -> Any,
-    itemContent: @Composable (T) -> Unit,
-) {
+    itemContent: @Composable (
+        item: T,
+        onReply: (RepoStrongRef, RepoStrongRef, FeedPost, ActorDefsProfileView) -> Unit,
+        onQuote: (RepoStrongRef) -> Unit
+    ) -> Unit)
+{
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView ->
+        mainViewModel.setReplyContext(parentRef, rootRef, parentPost, parentAuthor)
+        onBack()
+    }
+
+    val onQuote = { ref: RepoStrongRef ->
+        coroutineScope.launch {
+            val post = viewModel.getRecord(ref)
+            mainViewModel.addEmbed(
+                AttachedEmbed(
+                    type = BlueskyTypes.EmbedRecord,
+                    ref = ref,
+                    post = post,
+                )
+            )
+            onBack()
+        }
+        Unit
+    }
 
     // フィード表示時、再読み込みする: 通知画面を直接呼び出したとき対策
     LaunchedEffect(Unit) {
@@ -121,7 +152,7 @@ fun <T : HasUri> PaginatedListScreen(
                     .padding(8.dp)
             ) {
                 items(items = items, key = itemKey) { item ->
-                    itemContent(item)
+                    itemContent(item, onReply, onQuote)
                 }
             }
         }

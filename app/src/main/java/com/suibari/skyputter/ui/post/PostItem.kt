@@ -33,9 +33,9 @@ fun PostItem(
     onReply: ((parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView) -> Unit)?,
     onLike: ((RepoStrongRef) -> Unit)?,
     onRepost: ((RepoStrongRef) -> Unit)?,
+    onQuote: ((RepoStrongRef) -> Unit)?,
 ) {
     val record = feed.raw.post.record?.asFeedPost!!
-    val isMyPost = feed.raw.post.author?.did == myDid
 
     val subjectRef = RepoStrongRef(feed.raw.post.uri!!, feed.raw.post.cid!!)
     val rootRef = feed.raw.reply?.root?.let {
@@ -80,7 +80,7 @@ fun PostItem(
                     )
 
                     DisplayActions(
-                        isMyPost = isMyPost,
+                        isMyPost = false, // trueでアクションボタンが消える。暫定false(常に表示)
                         isLiked = isLiked,
                         isReposted = isReposted,
                         subjectRef = subjectRef,
@@ -89,7 +89,8 @@ fun PostItem(
                         author = ActorDefsProfileView(), // 現状自分のポストのみ表示なので暫定措置
                         onReply = onReply,
                         onLike = onLike,
-                        onRepost = onRepost
+                        onRepost = onRepost,
+                        onQuote = onQuote,
                     )
 
                     // 返信

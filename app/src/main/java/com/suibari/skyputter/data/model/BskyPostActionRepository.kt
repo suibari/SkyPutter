@@ -8,6 +8,7 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteLikeRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedDeleteRepostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetPostsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedLikeRequest
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedPostRequest
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedRepostRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoGetRecordRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
@@ -47,7 +48,7 @@ open class BskyPostActionRepository : PostActionRepository {
     /**
      * レコードを取得（キャッシュ機能付き）
      */
-    protected suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
+    suspend fun getRecord(refRecord: RepoStrongRef?): FeedPost? {
         return try {
             refRecord?.let { ref ->
                 val uri = ref.uri

@@ -15,6 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import work.socialhub.kbsky.model.app.bsky.feed.FeedDefsViewerState
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 
 abstract class PaginatedListViewModel<T : HasUri> : ViewModel() {
@@ -214,5 +215,9 @@ abstract class PaginatedListViewModel<T : HasUri> : ViewModel() {
                 }
             }
         }
+    }
+
+    suspend fun getRecord(ref: RepoStrongRef): FeedPost? {
+        return repo.getRecord(ref)
     }
 }

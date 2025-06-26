@@ -13,7 +13,6 @@ import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.data.repository.ProfileResult
 import com.suibari.skyputter.data.repository.OgImageResult
-import com.suibari.skyputter.ui.likesback.LikesBackViewModel
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import kotlinx.coroutines.flow.first
@@ -36,7 +35,6 @@ class MainViewModel(
     private val repo: MainRepository,
     val userPostViewModel: UserPostViewModel,
     val notificationViewModel: NotificationViewModel,
-    val likesBackViewModel: LikesBackViewModel,
 ) : ViewModel() {
 
     private var _uiState = mutableStateOf(UiState())

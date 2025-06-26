@@ -29,6 +29,7 @@ fun NotificationItem(
     onReply: (parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView) -> Unit,
     onLike: (ref: RepoStrongRef) -> Unit,
     onRepost: (ref: RepoStrongRef) -> Unit,
+    onQuote: (ref: RepoStrongRef) -> Unit,
 ) {
     val record = notification.raw.record
 
@@ -77,7 +78,8 @@ fun NotificationItem(
                     author = notification.raw.author,
                     onReply = onReply,
                     onLike = onLike,
-                    onRepost = onRepost
+                    onRepost = onRepost,
+                    onQuote = onQuote,
                 )
 
                 // 親ポスト欄

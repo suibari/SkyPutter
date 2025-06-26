@@ -18,28 +18,39 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.*
 import com.suibari.skyputter.data.model.PaginatedListScreen
+import com.suibari.skyputter.ui.main.AttachedEmbed
+import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.ui.type.DisplayFeed
+import kotlinx.coroutines.launch
+import work.socialhub.kbsky.BlueskyTypes
+import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserPostListScreen(
     viewModel: UserPostViewModel,
+    mainViewModel: MainViewModel,
     myDid: String,
     onNavigateToMain: () -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     var postToDelete by remember { mutableStateOf<DisplayFeed?>(null) }
 
     PaginatedListScreen(
         title = "Your Posts",
         items = viewModel.items,
         viewModel = viewModel,
+        mainViewModel = mainViewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
         onBack = { onNavigateToMain() },
         onRefresh = { viewModel.loadInitialItems() },
         onLoadMore = { viewModel.loadMoreItems() },
         itemKey = { it.uri!! },
-        itemContent = { feed ->
+        itemContent = { feed, onReply, onQuote ->
             val dismissState = rememberSwipeToDismissBoxState(
                 confirmValueChange = {
                     if (it == EndToStart) {
@@ -58,7 +69,13 @@ fun UserPostListScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(lerp(Color.LightGray, Color.Red, dismissState.progress))
+                                    .background(
+                                        lerp(
+                                            Color.LightGray,
+                                            Color.Red,
+                                            dismissState.progress
+                                        )
+                                    )
                                     .wrapContentSize(Alignment.CenterEnd)
                                     .padding(12.dp)
                             ) {
@@ -79,9 +96,10 @@ fun UserPostListScreen(
                     myDid = myDid,
                     isLiked = false,
                     isReposted = false,
-                    onReply = null,
-                    onLike = null,
-                    onRepost = null,
+                    onReply = onReply,
+                    onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
+                    onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
+                    onQuote = { onQuote(it) },
                 )
             }
         }

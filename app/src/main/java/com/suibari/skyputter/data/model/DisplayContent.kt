@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
@@ -265,7 +266,8 @@ fun DisplayActions(
     author: ActorDefsProfileView,
     onReply: ((RepoStrongRef, RepoStrongRef, FeedPost, ActorDefsProfileView) -> Unit)?,
     onLike: ((RepoStrongRef) -> Unit)?,
-    onRepost: ((RepoStrongRef) -> Unit)?
+    onRepost: ((RepoStrongRef) -> Unit)?,
+    onQuote: ((RepoStrongRef) -> Unit)?,
 ) {
     if (!isMyPost) {
         val likeColor = if (isLiked) Color.Red else MaterialTheme.colorScheme.onBackground
@@ -301,8 +303,20 @@ fun DisplayActions(
                     Icons.Default.Refresh,
                     contentDescription = "リポスト",
                     tint = repostColor,
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .clickable {
+                            onRepost?.invoke(
+                                subjectRef,
+                            )
+                        }
+                )
+                Icon(
+                    Icons.Default.ExitToApp,
+                    contentDescription = "引用",
+                    tint = MaterialTheme.colorScheme.onBackground,
                     modifier = Modifier.clickable {
-                        onRepost?.invoke(
+                        onQuote?.invoke(
                             subjectRef,
                         )
                     }

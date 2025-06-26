@@ -7,6 +7,10 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.suibari.skyputter.data.model.PaginatedListScreen
+import com.suibari.skyputter.ui.main.AttachedEmbed
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
@@ -19,11 +23,6 @@ fun NotificationListScreen(
 ) {
     val notifications = viewModel.items
     val coroutineScope = rememberCoroutineScope()
-
-    val onReply = { parentRef: RepoStrongRef, rootRef: RepoStrongRef, parentPost: FeedPost, parentAuthor: ActorDefsProfileView ->
-        mainViewModel.setReplyContext(parentRef, rootRef, parentPost, parentAuthor)
-        onNavigateToMain()
-    }
 
     val listState = rememberLazyListState()
 
@@ -45,6 +44,7 @@ fun NotificationListScreen(
         title = "Notification",
         items = notifications,
         viewModel = viewModel,
+        mainViewModel = mainViewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
         onBack = { onNavigateToMain() },
@@ -55,7 +55,7 @@ fun NotificationListScreen(
             viewModel.loadMoreItems()
         },
         itemKey = { it.uri!! },
-        itemContent = { notif ->
+        itemContent = { notif, onReply, onQuote ->
             val viewer = viewModel.viewerStatus[notif.uri]
             val isLiked = viewer?.like != null
             val isReposted = viewer?.repost != null
@@ -67,6 +67,7 @@ fun NotificationListScreen(
                 onReply = onReply,
                 onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
                 onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
+                onQuote = { onQuote(it) },
             )
         }
     )

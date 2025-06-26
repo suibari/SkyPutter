@@ -38,6 +38,7 @@ import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
 import kotlinx.coroutines.launch
+import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -115,6 +116,7 @@ fun MainScreen(
                 val filename = Util.getFileName(context, uri) ?: "image.jpg"
                 viewModel.addEmbed(
                     AttachedEmbed(
+                        type = BlueskyTypes.EmbedImages,
                         filename = filename,
                         imageUriString = uri.toString(),
                         blob = blob,
@@ -469,7 +471,7 @@ private fun ReplyContextCard(
 
             Text(
                 text = parentPost?.text ?: "",
-                maxLines = 2,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodySmall,
@@ -539,7 +541,7 @@ private fun AttachedImageCard(
                 ) {
                     when {
                         // imageUrlもtitleもある場合：左に画像、右にtitle/description
-                        embed.imageUri != null && embed.title != null -> {
+                        embed.type == BlueskyTypes.EmbedExternal && embed.imageUri != null -> {
                             Row(
                                 modifier = Modifier.fillMaxSize()
                             ) {
@@ -579,7 +581,7 @@ private fun AttachedImageCard(
                             }
                         }
                         // imageUrlのみ（添付画像）：画像を全面に表示
-                        embed.imageUri != null && embed.title == null -> {
+                        embed.type == BlueskyTypes.EmbedImages -> {
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
                                     .data(embed.imageUri)
@@ -591,7 +593,7 @@ private fun AttachedImageCard(
                             )
                         }
                         // titleのみ（OG画像のないサイト）：titleを全面に表示
-                        embed.title != null && embed.imageUri == null -> {
+                        embed.type == BlueskyTypes.EmbedExternal -> {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -608,6 +610,24 @@ private fun AttachedImageCard(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = it,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 4,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                        // 引用
+                        embed.type == BlueskyTypes.EmbedRecord -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                embed.post?.let {
+                                    Text(
+                                        text = it.text ?: "",
                                         style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 4,
                                         overflow = TextOverflow.Ellipsis

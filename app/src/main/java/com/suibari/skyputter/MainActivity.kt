@@ -12,14 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
-import com.suibari.skyputter.data.repository.LikesBackRepository
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.NotificationRepoProvider
 import com.suibari.skyputter.data.repository.UserPostRepository
 import com.suibari.skyputter.ui.about.AboutScreen
 import com.suibari.skyputter.ui.draft.DraftScreen
-import com.suibari.skyputter.ui.likesback.LikesBackScreen
-import com.suibari.skyputter.ui.likesback.LikesBackViewModel
 import com.suibari.skyputter.ui.loading.LoadingScreen
 import com.suibari.skyputter.ui.login.LoginScreen
 import com.suibari.skyputter.ui.main.MainScreen
@@ -284,6 +281,7 @@ class MainActivity : ComponentActivity() {
                         viewModelContainer.userPostViewModel?.let { userPostVM ->
                             UserPostListScreen(
                                 viewModel = userPostVM,
+                                mainViewModel = viewModelContainer.mainViewModel!!,
                                 myDid = myDid!!,
                                 onNavigateToMain = {
                                     navController.navigate("main")
@@ -393,8 +391,6 @@ class ViewModelContainer(private val context: Context) {
         private set
     var userPostViewModel: UserPostViewModel? by mutableStateOf(null)
         private set
-    var likesBackViewModel: LikesBackViewModel? by mutableStateOf(null)
-        private set
     var draftViewModel: DraftViewModel? by mutableStateOf(null)
         private set
     var mainViewModel: MainViewModel? by mutableStateOf(null)
@@ -430,7 +426,6 @@ class ViewModelContainer(private val context: Context) {
                 val deviceNotifier = DeviceNotifier(context)
                 val notificationRepo = NotificationRepoProvider.getInstance(context)
                 val userPostRepo = UserPostRepository()
-                val likesbackRepo = LikesBackRepository()
                 val mainRepo = MainRepository()
 
                 Log.d("ViewModelContainer", "Repositories initialized")
@@ -446,14 +441,12 @@ class ViewModelContainer(private val context: Context) {
                     )
 
                     userPostViewModel = UserPostViewModel(userPostRepo)
-                    likesBackViewModel = LikesBackViewModel(likesbackRepo)
                     draftViewModel = DraftViewModel(context)
 
                     mainViewModel = MainViewModel(
                         repo = mainRepo,
                         userPostViewModel = userPostViewModel!!,
                         notificationViewModel = notificationViewModel!!,
-                        likesBackViewModel = likesBackViewModel!!,
                     )
 
                     Log.d("ViewModelContainer", "ViewModels created successfully")
