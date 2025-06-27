@@ -13,43 +13,24 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 object Util {
-    // 画像の軽量読み込み
-    suspend fun getOptimizedImageFromUri(
+    suspend fun getImageFromUri(
         context: Context,
         uri: Uri
     ): Triple<ByteArray, String, EmbedDefsAspectRatio?> = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
         val contentType = contentResolver.getType(uri) ?: "image/jpeg"
 
-        // 画像サイズを事前チェック
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
-
-        contentResolver.openInputStream(uri)?.use { inputStream ->
-            BitmapFactory.decodeStream(inputStream, null, options)
-        }
-
-        // サイズが大きい場合は縮小
-        val sampleSize = calculateInSampleSize(options, 1080, 1080)
-        options.inSampleSize = sampleSize
-        options.inJustDecodeBounds = false
-
         val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
-            BitmapFactory.decodeStream(inputStream, null, options)
+            BitmapFactory.decodeStream(inputStream)
         } ?: throw IllegalArgumentException("画像を読み込めません")
 
-        // 圧縮
         val outputStream = ByteArrayOutputStream()
-        val quality = if (bitmap.byteCount > 1024 * 1024) 80 else 95 // 1MB以上なら品質を下げる
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
 
         val aspectRatio = EmbedDefsAspectRatio().apply {
             width = bitmap.width
             height = bitmap.height
         }
-
-        bitmap.recycle() // メモリ解放
 
         Triple(outputStream.toByteArray(), contentType, aspectRatio)
     }

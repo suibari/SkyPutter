@@ -38,7 +38,7 @@ object EmbedBuilder {
 
             // urlStringがセット -> リンクカード
             embeds.firstOrNull { it.type == BlueskyTypes.EmbedExternal }?.let {
-                return@let createExternalEmbed(it)
+                return@withContext createExternalEmbed(it)
             }
 
             // 画像blobがセット -> 画像

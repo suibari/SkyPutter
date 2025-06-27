@@ -133,7 +133,7 @@ fun MainScreen(
                                 contentType?.startsWith("image/") == true -> {
                                     // 画像の場合は軽量処理
                                     val (blob, actualContentType, aspectRatio) =
-                                        Util.getOptimizedImageFromUri(context, uri)
+                                        Util.getImageFromUri(context, uri)
 
                                     withContext(Dispatchers.Main) {
                                         viewModel.addEmbed(
