@@ -13,9 +13,16 @@ import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.data.repository.ProfileResult
 import com.suibari.skyputter.data.repository.OgImageResult
+import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
@@ -62,6 +69,10 @@ class MainViewModel(
     // postText保持用
     var postText by mutableStateOf("")
 
+    // セッション不正（ログアウトが必要）を通知するフロー
+    private val _requireLogout = MutableStateFlow(false)
+    val requireLogout = _requireLogout.asStateFlow()
+
     private var initializing = false
     fun initialize(context: Context) {
         // 初期化中の初期化を含め、1度だけ初期化
@@ -81,16 +92,25 @@ class MainViewModel(
                         Log.d("MainViewModel", "profile loaded")
                     }
                     is ProfileResult.Error -> {
+                        Log.e("MainViewModel", "getProfile failed, requiring logout", result.exception)
                         _uiState.value = _uiState.value.copy(
                             errorMessage = result.message,
                             isLoading = false
                         )
+                        _requireLogout.emit(true)
                         return@launch
                     }
                 }
 
-                // バックグラウンド処理開始
-                notificationViewModel.startBackgroundPolling()
+                // バックグラウンド処理開始: 設定ON時のみ
+                val isNotificationPollingEnabled = NotificationSettings
+                    .getNotificationPollingEnabled(context)
+                    .firstOrNull() ?: true // 初回起動時はnullなのでtrueにフォールバック
+                if (isNotificationPollingEnabled) {
+                    notificationViewModel.startBackgroundPolling()
+                }
+                // 設定画面での変更を監視
+                notificationViewModel.startSettingsWatcher(context)
 
                 // 子ViewModelの初期化
                 Log.d("MainViewModel", "loading child view models")
@@ -110,6 +130,7 @@ class MainViewModel(
                     isLoading = false,
                     errorMessage = "初期化に失敗しました: ${e.message}"
                 )
+                _requireLogout.emit(true)
             } finally {
                 initializing = false
             }

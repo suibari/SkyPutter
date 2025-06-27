@@ -24,6 +24,7 @@ import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.ui.notification.NotificationListScreen
 import com.suibari.skyputter.ui.post.UserPostListScreen
 import com.suibari.skyputter.ui.post.UserPostViewModel
+import com.suibari.skyputter.ui.settings.SettingsScreen
 import com.suibari.skyputter.ui.theme.SkyPutterTheme
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
@@ -218,9 +219,6 @@ class MainActivity : ComponentActivity() {
                                 onOpenUserPost = {
                                     navController.navigate(Screen.UserPost.route)
                                 },
-//                                onOpenLikesBack = {
-//                                    navController.navigate(Screen.LikesBack.route)
-//                                },
                                 onOpenDraft = {
                                     navController.navigate(Screen.Draft.route)
                                 },
@@ -358,6 +356,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+                    }
+                    else -> LoadingScreen()
+                }
+            }
+
+            composable(Screen.Settings.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        SettingsScreen()
                     }
                     else -> LoadingScreen()
                 }

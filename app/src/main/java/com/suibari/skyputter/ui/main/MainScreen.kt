@@ -38,6 +38,7 @@ import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.BlueskyTypes
@@ -85,6 +86,15 @@ fun MainScreen(
             viewModel.postText = initialText
             onDraftTextCleared() // テキスト設定後にクリア
         }
+    }
+
+    // プロフィール取得エラー時、強制ログアウト
+    LaunchedEffect(Unit) {
+        viewModel.requireLogout
+            .filter { it } // trueの時のみ
+            .collect {
+                onLogout()
+            }
     }
 
     // エラーメッセージ表示用のSnackbarHost
@@ -178,6 +188,7 @@ fun MainScreen(
                         profile = profile,
                         onOpenUserPost = onOpenUserPost,
                         onOpenAbout = onOpenAbout,
+                        onOpenSettings = onOpenSettings,
                         onLogout = {
                             coroutineScope.launch {
                                 SessionManager.clearSession()
@@ -311,6 +322,7 @@ private fun ProfileMenu(
     profile: ActorDefsProfileViewDetailed?,
     onOpenUserPost: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -346,6 +358,13 @@ private fun ProfileMenu(
                 text = { Text("About") },
                 onClick = {
                     onOpenAbout()
+                    expanded = false
+                }
+            )
+            DropdownMenuItem(
+                text = { Text("設定") },
+                onClick = {
+                    onOpenSettings()
                     expanded = false
                 }
             )

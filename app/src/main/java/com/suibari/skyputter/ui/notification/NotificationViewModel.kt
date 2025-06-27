@@ -1,12 +1,16 @@
 package com.suibari.skyputter.ui.notification
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.data.repository.NotificationRepository
 import com.suibari.skyputter.data.model.PaginatedListViewModel
+import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.type.DisplayNotification
 import com.suibari.skyputter.worker.DeviceNotifier
 import com.suibari.skyputter.service.NotificationPollingService
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 class NotificationViewModel(
@@ -23,12 +27,12 @@ class NotificationViewModel(
 
     /** バックグラウンド通知ポーリングを開始する（1分間隔） */
     fun startBackgroundPolling() {
-        NotificationPollingService.startService(repo.context)
+        NotificationPollingService.startService(repo.context.applicationContext)
     }
 
     /** バックグラウンド通知ポーリングを停止する */
     fun stopBackgroundPolling() {
-        NotificationPollingService.stopService(repo.context)
+        NotificationPollingService.stopService(repo.context.applicationContext)
     }
 
     /** 手動フェッチ(未読を既読にしてリスト更新) */
@@ -81,5 +85,33 @@ class NotificationViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    // notificationの設定変更を監視する
+    private var settingsWatcherJob: Job? = null
+
+    fun startSettingsWatcher(context: Context) {
+        settingsWatcherJob?.cancel()
+        settingsWatcherJob = viewModelScope.launch {
+            NotificationSettings.getNotificationPollingEnabled(context)
+                .distinctUntilChanged() // 値が変更された時のみ実行
+                .collect { enabled ->
+                    if (enabled) {
+                        startBackgroundPolling()
+                    } else {
+                        stopBackgroundPolling()
+                    }
+                }
+        }
+    }
+
+    fun stopSettingsWatcher() {
+        settingsWatcherJob?.cancel()
+        settingsWatcherJob = null
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopSettingsWatcher()
     }
 }

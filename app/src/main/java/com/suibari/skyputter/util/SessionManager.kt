@@ -47,6 +47,7 @@ object SessionManager {
     }
 
     suspend fun getSession(): Session {
+        check(::appContext.isInitialized) { "SessionManager is not initialized. Call initialize(context) first." }
         val prefs = appContext.dataStore.data.first()
         val access = prefs[SessionKeys.accessJwt]
         val refresh = prefs[SessionKeys.refreshJwt]
