@@ -13,12 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.suibari.skyputter.data.model.DisplayActions
 import com.suibari.skyputter.data.model.DisplayContent
+import com.suibari.skyputter.data.model.DisplayExternal
 import com.suibari.skyputter.data.model.DisplayHeader
 import com.suibari.skyputter.data.model.DisplayImage
 import com.suibari.skyputter.data.model.DisplayParentPost
 import com.suibari.skyputter.ui.theme.itemPadding
 import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.ui.type.DisplayFeed
+import com.suibari.skyputter.util.BskyUtil
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideoView
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -36,6 +38,7 @@ fun PostItem(
     onQuote: ((RepoStrongRef) -> Unit)?,
 ) {
     val record = feed.raw.post.record?.asFeedPost!!
+    val (repo, collection, rkey) = BskyUtil.parseAtUri(feed.uri.toString())!!
 
     val subjectRef = RepoStrongRef(feed.raw.post.uri!!, feed.raw.post.cid!!)
     val rootRef = feed.raw.reply?.root?.let {
@@ -51,6 +54,8 @@ fun PostItem(
     }
 
     val video: EmbedVideoView? = feed.raw.post.embed?.asVideo
+
+    val external = record.embed?.asExternal?.external
 
     // 2段階boxとし、1つ目のboxで背景を設定、2つ目のboxでコンテンツ描画
     // これによりスワイプ削除をうまく機能させる
@@ -92,6 +97,11 @@ fun PostItem(
                         onRepost = onRepost,
                         onQuote = onQuote,
                     )
+
+                    // リンクカード
+                    if (external != null) {
+                        DisplayExternal(repo, external)
+                    }
 
                     // 返信
                     DisplayParentPost(

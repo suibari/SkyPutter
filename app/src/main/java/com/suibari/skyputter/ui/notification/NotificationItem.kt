@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.suibari.skyputter.data.model.DisplayActions
 import com.suibari.skyputter.data.model.DisplayContent
+import com.suibari.skyputter.data.model.DisplayExternal
 import com.suibari.skyputter.data.model.DisplayHeader
 import com.suibari.skyputter.data.model.DisplayImage
 import com.suibari.skyputter.data.model.DisplayParentPost
@@ -32,12 +33,12 @@ fun NotificationItem(
     onQuote: (ref: RepoStrongRef) -> Unit,
 ) {
     val record = notification.raw.record
+    val did = notification.raw.author.did
 
     val subjectRef = RepoStrongRef(notification.raw.uri, notification.raw.cid)
     val rootRef = notification.rootPostRecord ?: subjectRef
 
     val images: List<DisplayImage>? = notification.raw.record.asFeedPost?.embed?.asImages?.images?.map {
-        val did = notification.raw.author.did
         val cid = it.image?.ref?.link!!
         val thumb = BskyUtil.buildCdnImageUrl(did, cid, "feed_thumbnail")
         val fullsize = BskyUtil.buildCdnImageUrl(did, cid, "feed_fullsize")
@@ -47,6 +48,8 @@ fun NotificationItem(
             alt = it.alt,
         )
     }
+
+    val external = record.asFeedPost?.embed?.asExternal?.external
 
     Box (Modifier.itemPadding) {
         Row {
@@ -64,8 +67,8 @@ fun NotificationItem(
                     text = record.asFeedPost?.text,
                     authorName = notification.raw.author.displayName,
                     images = images,
-                    video = null, // 暫定非対応
-                    date = notification.raw.indexedAt
+                    video = null, // 暫定非対応: 通知で動画は表示しない
+                    date = notification.raw.indexedAt,
                 )
 
                 DisplayActions(
@@ -81,6 +84,11 @@ fun NotificationItem(
                     onRepost = onRepost,
                     onQuote = onQuote,
                 )
+
+                // リンクカード
+                if (external != null) {
+                    DisplayExternal(did, external)
+                }
 
                 // 返信
                 DisplayParentPost(

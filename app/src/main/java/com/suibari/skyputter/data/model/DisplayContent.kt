@@ -1,6 +1,8 @@
 package com.suibari.skyputter.data.model
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.view.ViewGroup
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -12,8 +14,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ExitToApp
@@ -38,9 +43,28 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.exoplayer.ExoPlayer
@@ -57,12 +81,11 @@ import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import java.time.Instant
 import java.time.Duration
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.core.net.toUri
+import com.suibari.skyputter.util.BskyUtil
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalExternal
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalView
 
 
 data class DisplayImage (
@@ -142,7 +165,14 @@ fun DisplayHeader(
 }
 
 @Composable
-fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage>?, video: EmbedVideoView?, date: String?) {
+fun DisplayContent(
+    text: String?,
+    authorName: String?,
+    images: List<DisplayImage>?,
+    video: EmbedVideoView?,
+    date: String?
+) {
+    val context = LocalContext.current
     val selectedImage = remember { mutableStateOf<String?>(null) }
 
     if (!authorName.isNullOrBlank()) {
@@ -152,12 +182,9 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
             color = MaterialTheme.colorScheme.primary,
         )
     }
+
     if (!text.isNullOrBlank()) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        LinkifiedText(text)
     }
 
     if (!images.isNullOrEmpty()) {
@@ -181,6 +208,41 @@ fun DisplayContent(text: String?, authorName: String?, images: List<DisplayImage
             color = MaterialTheme.colorScheme.outline,
         )
     }
+}
+
+@Composable
+fun LinkifiedText(text: String) {
+    val context = LocalContext.current
+    val annotatedText = remember { buildLinkAnnotatedText(text) }
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+
+    BasicText(
+        text = annotatedText,
+        modifier = Modifier
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val position = event.changes.first().position
+                        layoutResult?.let { layout ->
+                            val offset = layout.getOffsetForPosition(position)
+                            annotatedText.getLinkAnnotations(offset, offset).firstOrNull()?.let { annotation ->
+                                val url = (annotation.item as? LinkAnnotation.Url)?.url
+                                if (url != null) {
+                                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                                    context.startActivity(intent)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        onTextLayout = { layoutResult = it },
+        style = androidx.compose.ui.text.TextStyle(
+            fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    )
 }
 
 fun formatRelativeTime(dateString: String): String {
@@ -345,6 +407,58 @@ fun DisplayVideo(
 }
 
 @Composable
+fun DisplayExternal(authorDid: String, external: EmbedExternalExternal) {
+    val context = LocalContext.current
+    val uri = external.uri
+    val title = external.title
+    val thumb = external.thumb
+
+    // サムネイルURL取得
+    val thumbUrl = BskyUtil.buildCdnImageUrl(
+        did = authorDid,
+        cid = external.thumb?.ref?.link.toString(),
+        variant = "feed_thumbnail",
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                val intent = Intent(Intent.ACTION_VIEW, uri.toUri())
+                context.startActivity(intent)
+            }
+            .padding(8.dp)
+    ) {
+        if (thumb != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(thumbUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .padding(bottom = 8.dp),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+
+        Text(
+            text = uri,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+    }
+}
+
+@Composable
 fun DisplayActions(
     isMyPost: Boolean,
     isLiked: Boolean,
@@ -467,4 +581,33 @@ fun VideoPlayer(
         },
         modifier = modifier
     )
+}
+
+fun buildLinkAnnotatedText(text: String): AnnotatedString {
+    val regex = "(https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=.%]+)".toRegex()
+    val builder = AnnotatedString.Builder()
+    var currentIndex = 0
+
+    for (match in regex.findAll(text)) {
+        val url = match.value
+        val start = match.range.first
+
+        if (start > currentIndex) {
+            builder.append(text.substring(currentIndex, start))
+        }
+
+        builder.pushLink(LinkAnnotation.Url(url))
+        builder.withStyle(SpanStyle(color = androidx.compose.ui.graphics.Color.Blue, textDecoration = TextDecoration.Underline)) {
+            builder.append(url)
+        }
+        builder.pop()
+
+        currentIndex = match.range.last + 1
+    }
+
+    if (currentIndex < text.length) {
+        builder.append(text.substring(currentIndex))
+    }
+
+    return builder.toAnnotatedString()
 }
