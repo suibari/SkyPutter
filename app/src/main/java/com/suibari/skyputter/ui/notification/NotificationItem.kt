@@ -82,7 +82,7 @@ fun NotificationItem(
                     onQuote = onQuote,
                 )
 
-                // 親ポスト欄
+                // 返信
                 DisplayParentPost(
                     authorName = null, // 元のポスト主は絶対に自分のため、表示が無駄なのでnull入れておく
                     record = notification.parentPost,

@@ -71,7 +71,9 @@ class NotificationRepository (
 
         val result = notifs.map { notif ->
             val isNew = !notif.isRead
+            // 親ポストを 返信 > 引用 > リポスト > いいね の順番で判定
             val parentPostRecord = notif.record.asFeedPost?.reply?.parent
+                ?: notif.record.asFeedPost?.embed?.asRecord?.record
                 ?: notif.record.asFeedRepost?.subject
                 ?: notif.record.asFeedLike?.subject
             val rootPostRecord = notif.record.asFeedPost?.reply?.root
