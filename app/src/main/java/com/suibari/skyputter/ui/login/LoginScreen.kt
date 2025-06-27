@@ -1,95 +1,112 @@
 package com.suibari.skyputter.ui.login
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.SkyPutterApp
-import kotlinx.coroutines.*
-import work.socialhub.kbsky.BlueskyFactory
-import work.socialhub.kbsky.domain.Service
-import work.socialhub.kbsky.api.entity.com.atproto.server.ServerCreateSessionRequest
+import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
 @Composable
 fun LoginScreen(
     application: SkyPutterApp,
     onLoginSuccess: () -> Unit
 ) {
+    val viewModel = remember { LoginViewModel() }
+
+    var serviceHost by remember { mutableStateOf(BSKY_SOCIAL.uri) }
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
+
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Text("SkyPutter", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "SkyPutter",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        OutlinedTextField(
+            value = serviceHost,
+            onValueChange = { serviceHost = it },
+            label = { Text("Service Host") },
+            singleLine = true,
+            enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = identifier,
             onValueChange = { identifier = it },
-            label = { Text("Handle または Email") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("パスワード") },
-            visualTransformation = PasswordVisualTransformation(),
+            label = { Text("Handle") },
+            singleLine = true,
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                isLoading = true
-                errorMessage = null
-                CoroutineScope(Dispatchers.IO).launch {
-                    try {
-                        // Blueskyログイン
-                        val response = BlueskyFactory
-                            .instance(Service.BSKY_SOCIAL.uri)
-                            .server()
-                            .createSession(ServerCreateSessionRequest().also {
-                                it.identifier = identifier
-                                it.password = password
-                            })
-                        val accessJwt = response.data.accessJwt
-                        val refreshJwt = response.data.refreshJwt
-                        val did = response.data.did
-
-                        // セッション保存
-                        SessionManager.saveSession(accessJwt, refreshJwt, did)
-
-                        withContext(Dispatchers.Main) {
-                            onLoginSuccess()
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            errorMessage = "ログイン失敗：${e.message}"
-                            isLoading = false
-                        }
-                    }
-                }
-            },
+        OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text("Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
             enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                viewModel.login(
+                    serviceHost = serviceHost,
+                    identifier = identifier,
+                    password = password,
+                    onSuccess = onLoginSuccess
+                )
+            },
+            enabled = !isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
         ) {
-            Text(if (isLoading) "ログイン中…" else "ログイン")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("ログイン中…")
+            } else {
+                Text("ログイン")
+            }
         }
 
         errorMessage?.let {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }

@@ -18,6 +18,7 @@ import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 private val Context.dataStore by preferencesDataStore(name = "session")
 
 object SessionKeys {
+    val host = stringPreferencesKey("host")
     val accessJwt = stringPreferencesKey("access_jwt")
     val refreshJwt = stringPreferencesKey("refresh_jwt")
     val did = stringPreferencesKey("did")
@@ -26,7 +27,8 @@ object SessionKeys {
 data class Session(
     val accessJwt: String?,
     val refreshJwt: String?,
-    val did: String?
+    val did: String?,
+    val host: String?,
 )
 
 object SessionManager {
@@ -38,11 +40,12 @@ object SessionManager {
         appContext = context.applicationContext
     }
 
-    suspend fun saveSession(accessJwt: String, refreshJwt: String, did: String) {
+    suspend fun saveSession(accessJwt: String, refreshJwt: String, did: String, host: String) {
         appContext.dataStore.edit { prefs ->
             prefs[SessionKeys.accessJwt] = accessJwt
             prefs[SessionKeys.refreshJwt] = refreshJwt
             prefs[SessionKeys.did] = did
+            prefs[SessionKeys.host] = host
         }
     }
 
@@ -52,7 +55,8 @@ object SessionManager {
         val access = prefs[SessionKeys.accessJwt]
         val refresh = prefs[SessionKeys.refreshJwt]
         val did = prefs[SessionKeys.did]
-        return Session(access, refresh, did)
+        val host = prefs[SessionKeys.host]
+        return Session(access, refresh, did, host)
     }
 
     fun hasSession(): Boolean {
@@ -88,10 +92,12 @@ object SessionManager {
                 val prefs = appContext.dataStore.data.first()
                 val refresh = prefs[SessionKeys.refreshJwt]
 
-                // refresh!
+                val host = prefs[SessionKeys.host] ?: BSKY_SOCIAL.uri
+
+                // Important: refreshトークンをaccessJwtにセットしないとrefreshできない!
                 val authRefresh = BearerTokenAuthProvider(refresh!!)
                 val response = BlueskyFactory
-                    .instance(BSKY_SOCIAL.uri)
+                    .instance(host)
                     .server()
                     .refreshSession(AuthRequest(authRefresh))
                 val accessNew = response.data.accessJwt
@@ -99,7 +105,7 @@ object SessionManager {
                 val did = response.data.did
 
                 val authNew = BearerTokenAuthProvider(accessNew, refreshNew)
-                saveSession(accessNew, refreshNew, did)
+                saveSession(accessNew, refreshNew, did, host)
                 Log.i("Session", "session refreshed!")
 
                 // retry with new token
