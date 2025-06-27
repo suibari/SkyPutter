@@ -182,7 +182,11 @@ class DeviceNotifier(private val context: Context) {
 
         // InboxStyleで最新の通知を表示
         val inboxStyle = NotificationCompat.InboxStyle()
-        val recentNotifs = allNotifs.sortedByDescending { it.raw.indexedAt }.take(5)
+
+        // 昇順ソートで正しい順に並ぶはず: 降順ソートだと1枠で2件以上通知が来ると逆順になる
+        val recentNotifs = allNotifs
+            .sortedBy { it.raw.indexedAt }
+            .takeLast(5)
 
         recentNotifs.forEach { notif ->
             val displayName = notif.raw.author.displayName ?: notif.raw.author.handle
