@@ -364,7 +364,13 @@ class MainActivity : ComponentActivity() {
             composable(Screen.Settings.route) {
                 when (initState) {
                     is ViewModelContainer.InitializationState.Completed -> {
-                        SettingsScreen()
+                        SettingsScreen(
+                            onBack = {
+                                navController.navigate("main") {
+                                    popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
+                                }
+                            }
+                        )
                     }
                     else -> LoadingScreen()
                 }
