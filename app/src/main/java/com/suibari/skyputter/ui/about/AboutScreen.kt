@@ -49,7 +49,7 @@ fun AboutScreen(
             // キャッチコピー
             Text(
                 text = "あなたの発信、\n" + "もっと自由に。",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -69,6 +69,12 @@ fun AboutScreen(
             // 説明文
             Text(
                 text = "SkyPutterは、BlueskyのサードパーティAndroidアプリです。\n" + "インプットを選択集中しつつ、アウトプットが捗る、そんなコンセプトで開発しました。",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            // 説明文2
+            Text(
+                text = "他の人の情報や、いいねリポストの数などを可能かなぎり排除していますが、もらったリプライやいいねの通知はすべて受け取れ、それに返信などのリアクションもできるようにつくっています。",
                 style = MaterialTheme.typography.bodyLarge
             )
 
