@@ -1,3 +1,5 @@
+![Image](app/src/main/res/drawable/logo_skyputter.png)
+
 SkyPutter(すかいぷったー)は、BlueSky向けの投稿専用/通知受信可能なクライアントアプリです。
 
 SNSでの情報のインプットが多くて疲れる、けれどリプライや、気持ちのアウトプットはしていたい、そんな人のためのアプリです。
@@ -24,7 +26,7 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 アプリ初回起動時とログアウト時はログイン画面が表示されます。
 
-<画像説明>
+![Image](https://github.com/user-attachments/assets/31223d41-1895-49c0-86f4-9242e08f5a88)
 
 ## メイン画面
 
@@ -36,7 +38,7 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 ポスト文を入力途中であれば、その文章の下書き保存が行えます。
 
-<画像説明>
+![Image](https://github.com/user-attachments/assets/bcdb9075-1115-4ff8-83e8-5c992c2f6831)
 
 ## 通知画面
 
@@ -46,7 +48,7 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 通知一覧最下部に到達すると、さらに通知を読み込みます。
 
-<画像説明>
+![Image](https://github.com/user-attachments/assets/3e98fb45-2ffd-4fa2-a37e-c6eebf798905)
 
 ## ポスト一覧画面
 
@@ -56,7 +58,7 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 ポスト一覧最下部に到達すると、さらにポストを読み込みます。
 
-<画像説明>
+![Image](https://github.com/user-attachments/assets/b09bcd78-5648-4be6-8294-e1df52b6ea86)
 
 ## 下書き画面
 
@@ -64,13 +66,11 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 下書きを選択すると、その下書きをポスト文に反映し、その下書きデータはリストから削除されます。
 
-<画像説明>
+![Image](https://github.com/user-attachments/assets/35e20d2d-c528-46ef-a8b3-b015f38a14ca)
 
 ## 設定画面
 
 ユーザアイコンのロングタップで出てくるメニューから遷移できます。
-
-<画像説明>
 
 # TIPS
 
@@ -80,11 +80,11 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 この状態であれば、SkyPutterは通知を定期取得できます。
 
-<画像>
+![Image](https://github.com/user-attachments/assets/75f9b5ab-1d08-480b-8936-ee5bdb98460e)
 
 通知取得開始時は、Androidのサイレント通知が表示されます。
 
-<画像>
+![Image](https://github.com/user-attachments/assets/7de77369-18e5-4c27-9014-ea3ec2a8ddba)
 
 逆に言えば、アプリをタスクトレイからスワイプして終了させると通知取得できなくなります。
 
@@ -100,11 +100,12 @@ SNSでの情報のインプットが多くて疲れる、けれどリプライ�
 
 もし著しい消費量となっていた場合は意図しない現象なので、申し訳ございませんが、すいばりまでご連絡ください。
 
-<画像>
+![Image](https://cdn.bsky.app/img/feed_fullsize/plain/did:plc:uixgxpiqf4i63p6rgpu7ytmx/bafkreih3tci5kxarvbfjd2e3ywnd5jcatb6zjblk3i2vmyatmtonzvv4te@jpeg)
+![Image](https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:uixgxpiqf4i63p6rgpu7ytmx/bafkreifrdcub4ai3shihpcyyjodjy2zzcutwbitjlcb2ziaexwhnegvzi4@jpeg)
 
 # 謝辞
 
-本アプリはKotlin向けBlueskyライブラリkbskyを使用しています。
+本アプリはKotlin向けBlueskyライブラリ[kbsky](https://github.com/uakihir0/kbsky)を使用しています。
 
 また、リリースにあたりBlueskyでたくさんのユーザにテスト協力していただきました。
 
