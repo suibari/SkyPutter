@@ -91,11 +91,15 @@ fun UserPostListScreen(
                 },
                 modifier = Modifier.padding(vertical = 4.dp) // 少しスペース
             ) {
+                val viewer = viewModel.viewerStatus[feed.uri]
+                val isLiked = viewer?.like != null
+                val isReposted = viewer?.repost != null
+
                 PostItem(
                     feed = feed,
                     myDid = myDid,
-                    isLiked = false,
-                    isReposted = false,
+                    isLiked = isLiked,
+                    isReposted = isReposted,
                     onReply = onReply,
                     onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
                     onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
