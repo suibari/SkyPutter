@@ -54,16 +54,14 @@ fun AboutScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // アプリロゴ（仮）
+            // アプリロゴ
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // 差し替え予定のロゴ画像
                 Image(painter = painterResource(id = R.drawable.logo_skyputter), contentDescription = "App Logo")
-//                Text("【ロゴ予定地】", fontSize = 16.sp, color = MaterialTheme.colorScheme.outline)
             }
 
             // 説明文
