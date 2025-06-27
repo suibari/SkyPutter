@@ -1,25 +1,35 @@
 package com.suibari.skyputter.data.model
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.pulltorefresh.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.suibari.skyputter.ui.main.AttachedEmbed
@@ -51,8 +61,8 @@ fun <T : HasUri> PaginatedListScreen(
         item: T,
         onReply: (RepoStrongRef, RepoStrongRef, FeedPost, ActorDefsProfileView) -> Unit,
         onQuote: (RepoStrongRef) -> Unit
-    ) -> Unit)
-{
+    ) -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
@@ -83,23 +93,25 @@ fun <T : HasUri> PaginatedListScreen(
         viewModel.loadInitialItems()
     }
 
-    // スクロール末尾で読み込み
-    LaunchedEffect(listState) {
-        snapshotFlow {
+    // 高速スクロール対応の末尾検出
+    val shouldLoadMore by remember {
+        derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
             val totalItems = layoutInfo.totalItemsCount
-            lastVisibleIndex != null &&
-                    totalItems > 0 &&
-                    lastVisibleIndex >= totalItems - 5
-        }.collect { shouldLoadMore ->
-            if (shouldLoadMore && !isLoadingMore && !isRefreshing) {
-                coroutineScope.launch(Dispatchers.IO) {
-                    try {
-                        onLoadMore()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+
+            lastVisibleIndex >= totalItems - 1 && totalItems > 0 &&
+                    !isLoadingMore && !isRefreshing
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            coroutineScope.launch(Dispatchers.IO) {
+                try {
+                    onLoadMore()
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
@@ -144,8 +156,7 @@ fun <T : HasUri> PaginatedListScreen(
                     onRefresh()
                 }
             },
-            modifier = Modifier
-                .padding(paddingValues)
+            modifier = Modifier.padding(paddingValues)
         ) {
             LazyColumn(
                 state = listState,
@@ -156,6 +167,34 @@ fun <T : HasUri> PaginatedListScreen(
             ) {
                 items(items = items, key = itemKey) { item ->
                     itemContent(item, onReply, onQuote)
+                }
+
+                // LoadMore中のプログレスインジケーター
+                if (isLoadingMore) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "読み込み中...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
