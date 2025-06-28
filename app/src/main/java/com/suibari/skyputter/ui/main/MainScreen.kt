@@ -1,6 +1,10 @@
 package com.suibari.skyputter.ui.main
 
+import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.LocalIndication
@@ -28,10 +32,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.ContentScale
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
+import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.util.DraftViewModel
@@ -73,6 +79,70 @@ fun MainScreen(
     val urlRegex = remember { Regex("""https?://\S+""") }
     var lastFetchedUrl by remember { mutableStateOf<String?>(null) }
 
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        Log.d("Permission", "通知許可: $isGranted")
+    }
+
+    val showDialog = remember { mutableStateOf(false) }
+    var dialogAlreadyShown by remember { mutableStateOf(true) }
+
+    // プロフィール取得エラー時、強制ログアウト
+    LaunchedEffect(Unit) {
+        viewModel.requireLogout
+            .filter { it } // trueの時のみ
+            .collect {
+                onLogout()
+            }
+    }
+
+    // ユーザーに通知許可を求める
+    LaunchedEffect(Unit) {
+        NotificationSettings.getNotificationDialogShown(context).collect { alreadyShown ->
+            dialogAlreadyShown = alreadyShown
+
+            // 初めての表示であれば、通知権限未許可か確認
+            if (!alreadyShown && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                !context.hasNotificationPermission()) {
+                showDialog.value = true
+            }
+        }
+    }
+
+    if (showDialog.value) {
+        AlertDialog(
+            onDismissRequest = { showDialog.value = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog.value = false
+                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+
+                    // ダイアログを表示済みに記録
+                    coroutineScope.launch {
+                        NotificationSettings.setNotificationDialogShown(context, true)
+                    }
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog.value = false
+                    coroutineScope.launch {
+                        NotificationSettings.setNotificationDialogShown(context, true)
+                    }
+                }) {
+                    Text("あとで")
+                }
+            },
+            title = { Text("通知の許可について") },
+            text = {
+                Text("SkyPutterは、あなたへのリプライやいいねをすぐにお知らせするために通知を使用します。通知を受け取るには、許可をお願いします。")
+            }
+        )
+    }
+
     // デバイス通知からの遷移イベント監視
     LaunchedEffect(Unit) {
         viewModel.navigateToNotification.collect {
@@ -86,15 +156,6 @@ fun MainScreen(
             viewModel.postText = initialText
             onDraftTextCleared() // テキスト設定後にクリア
         }
-    }
-
-    // プロフィール取得エラー時、強制ログアウト
-    LaunchedEffect(Unit) {
-        viewModel.requireLogout
-            .filter { it } // trueの時のみ
-            .collect {
-                onLogout()
-            }
     }
 
     // エラーメッセージ表示用のSnackbarHost
@@ -725,5 +786,17 @@ private fun AttachedImageCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * デバイス通知許可
+ */
+fun Context.hasNotificationPermission(): Boolean {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+    } else {
+        true // Android 12以下は不要
     }
 }
