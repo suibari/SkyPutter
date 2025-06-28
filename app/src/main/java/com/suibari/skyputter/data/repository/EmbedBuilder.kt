@@ -75,42 +75,59 @@ object EmbedBuilder {
     }
 
     private suspend fun createImageEmbed(embeds: List<AttachedEmbed>): EmbedImages {
-        return EmbedImages().apply {
-            images = embeds.map { embed ->
-                EmbedImagesImage().apply {
-                    image = uploadBlob(embed)
-                    alt = embed.filename ?: "image"
-                    aspectRatio = embed.aspectRatio ?: EmbedDefsAspectRatio().apply {
-                        width = 1
-                        height = 1
-                    }
+        if (embeds.isEmpty()) throw IllegalStateException("Not select image")
+
+        val imageItems = embeds.mapIndexed { index, embed ->
+            val blob = uploadBlob(embed)  // null を許容しない修正済み関数
+
+            EmbedImagesImage().apply {
+                image = blob
+                alt = "image$index"
+                aspectRatio = embed.aspectRatio ?: EmbedDefsAspectRatio().apply {
+                    width = 1
+                    height = 1
                 }
             }
         }
+
+        if (imageItems.isEmpty()) {
+            throw IllegalStateException("Failed to upload all images")
+        }
+
+        return EmbedImages().apply {
+            images = imageItems
+        }
     }
 
-    suspend fun uploadBlob(embed: AttachedEmbed): Blob? {
-        return if (embed.blob != null && embed.filename != null) {
-            try {
-                SessionManager.runWithAuthRetry { auth ->
-                    BlueskyFactory
-                        .instance(BSKY_SOCIAL.uri)
-                        .repo()
-                        .uploadBlob(
-                            RepoUploadBlobRequest(
-                                auth = auth,
-                                bytes = embed.blob!!,
-                                name = embed.filename!!,
-                                contentType = embed.contentType!!
-                            )
+    suspend fun uploadBlob(embed: AttachedEmbed): Blob {
+        val filename = embed.filename ?: throw IllegalArgumentException("filename is null")
+        val contentType = embed.contentType ?: throw IllegalArgumentException("contentType is null")
+        val blobData = embed.blob ?: throw IllegalArgumentException("blob data is null")
+
+        try {
+            Log.d("uploadBlob", "Uploading: name=$filename, size=${blobData.size}, contentType=$contentType")
+
+            val result = SessionManager.runWithAuthRetry { auth ->
+                BlueskyFactory
+                    .instance(BSKY_SOCIAL.uri)
+                    .repo()
+                    .uploadBlob(
+                        RepoUploadBlobRequest(
+                            auth = auth,
+                            bytes = blobData,
+                            name = filename,
+                            contentType = contentType
                         )
-                        .data.blob
-                }
-            } catch (e: Exception) {
-                null
+                    )
+                    .data.blob
             }
-        } else {
-            null
+
+            Log.d("uploadBlob", "Upload successful: $filename")
+            return result
+
+        } catch (e: Exception) {
+            Log.e("uploadBlob", "Upload failed for: $filename", e)
+            throw IllegalStateException("Upload failed for: $filename", e)
         }
     }
 

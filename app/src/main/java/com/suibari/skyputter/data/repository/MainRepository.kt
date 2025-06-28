@@ -22,6 +22,7 @@ import android.net.Uri.encode
 import com.suibari.skyputter.data.repository.EmbedBuilder.createEmbedUnion
 import org.json.JSONObject
 import work.socialhub.kbsky.BlueskyTypes
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -82,9 +83,24 @@ class MainRepository {
                         }
                     )
             }
+
             PostResult.Success
+
+        } catch (e: IllegalArgumentException) {
+            // 入力値がおかしい場合（blobがnullなど）
+            PostResult.Error("添付ファイルが不正です（${e.message}）", e)
+
+        } catch (e: IllegalStateException) {
+            // アプリ内の状態異常（uploadBlob失敗など）
+            PostResult.Error("画像や動画のアップロードに失敗しました（${e.message}）", e)
+
+        } catch (e: IOException) {
+            // 通信エラー
+            PostResult.Error("通信エラーが発生しました。ネットワークをご確認ください。", e)
+
         } catch (e: Exception) {
-            PostResult.Error("投稿に失敗しました", e)
+            // その他未分類
+            PostResult.Error("投稿に失敗しました（${e.localizedMessage}）", e)
         }
     }
 
