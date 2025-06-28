@@ -48,7 +48,7 @@ fun AboutScreen(
         ) {
             // キャッチコピー
             Text(
-                text = "しずか、" + "でもとどく",
+                text = "しずか、" + "でもとどく。",
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
