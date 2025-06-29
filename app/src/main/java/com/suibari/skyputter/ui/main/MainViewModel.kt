@@ -38,13 +38,13 @@ data class UiState(
     val isInitialized: Boolean = false
 )
 
-class MainViewModel(
+open class MainViewModel(
     private val repo: MainRepository,
     val userPostViewModel: UserPostViewModel,
     val notificationViewModel: NotificationViewModel,
 ) : ViewModel() {
 
-    private var _uiState = mutableStateOf(UiState())
+    protected var _uiState = mutableStateOf(UiState())
     val uiState: MutableState<UiState> = _uiState
 
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)
@@ -137,7 +137,7 @@ class MainViewModel(
         }
     }
 
-    fun post(context: Context, postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
+    open fun post(context: Context, postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
         if (_uiState.value.isPosting) return
 
         viewModelScope.launch {
