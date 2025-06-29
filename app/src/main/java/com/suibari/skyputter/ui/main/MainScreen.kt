@@ -241,7 +241,12 @@ fun MainScreen(
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.testTag("SnackBarHost")
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {},

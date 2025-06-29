@@ -44,7 +44,7 @@ open class MainViewModel(
     val notificationViewModel: NotificationViewModel,
 ) : ViewModel() {
 
-    private var _uiState = mutableStateOf(UiState())
+    protected var _uiState = mutableStateOf(UiState())
     val uiState: MutableState<UiState> = _uiState
 
     private var _profile = mutableStateOf<ActorDefsProfileViewDetailed?>(null)

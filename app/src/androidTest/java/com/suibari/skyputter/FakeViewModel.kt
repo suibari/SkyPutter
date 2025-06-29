@@ -35,4 +35,9 @@ class ErrorMainViewModel(
     ) {
         uiState.value = uiState.value.copy(errorMessage = "投稿に失敗しました")
     }
+
+    // テスト用エラーメッセージ注入メソッド
+    fun emitErrorForTest(message: String) {
+        _uiState.value = _uiState.value.copy(errorMessage = message)
+    }
 }
