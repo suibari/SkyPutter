@@ -38,7 +38,7 @@ data class UiState(
     val isInitialized: Boolean = false
 )
 
-class MainViewModel(
+open class MainViewModel(
     private val repo: MainRepository,
     val userPostViewModel: UserPostViewModel,
     val notificationViewModel: NotificationViewModel,
@@ -137,7 +137,7 @@ class MainViewModel(
         }
     }
 
-    fun post(context: Context, postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
+    open fun post(context: Context, postText: String, embeds: List<AttachedEmbed>?, onSuccess: () -> Unit = {}) {
         if (_uiState.value.isPosting) return
 
         viewModelScope.launch {

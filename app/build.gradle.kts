@@ -51,13 +51,16 @@ dependencies {
     implementation(libs.androidx.material3)
 
     // テスト関連
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.ui.test.junit4)
-    debugImplementation(libs.androidx.ui.tooling)
-    debugImplementation(libs.androidx.ui.test.manifest)
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:1.9.24")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    testImplementation("io.mockk:mockk:1.13.10")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.slf4j:slf4j-simple:2.0.7")
+    // UIテスト
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.1")
 
     // WorkManager（バックグラウンド処理用）
     implementation(libs.androidx.work.runtime.ktx)
@@ -90,7 +93,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.3.1") // HLS(.m3u8)再生用
 
     // === 1分間隔通知のための追加依存関係 ===
-
     // フォアグラウンドサービス用
     implementation("androidx.lifecycle:lifecycle-service:2.7.0")
 
@@ -106,4 +108,8 @@ dependencies {
 
     // 権限処理用（必要に応じて）
     implementation("com.google.accompanist:accompanist-permissions:0.33.2-alpha")
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

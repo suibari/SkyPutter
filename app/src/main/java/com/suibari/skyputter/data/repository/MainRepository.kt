@@ -41,7 +41,7 @@ sealed class OgImageResult {
     object NotFound : OgImageResult()
 }
 
-class MainRepository {
+open class MainRepository {
 
     suspend fun getProfile(): ProfileResult {
         return try {
