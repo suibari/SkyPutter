@@ -5,11 +5,13 @@ import com.suibari.skyputter.data.repository.EmbedBuilder
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.ui.main.AttachedEmbed
+import com.suibari.skyputter.util.SessionManager
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import io.mockk.*
+import work.socialhub.kbsky.BlueskyTypes
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -19,24 +21,31 @@ import io.mockk.*
 class MainRepoUnitTest {
 
     @Test
-    fun `uploadBlob throws exception, error is set`() = runTest {
+    fun unittest_uploadBlobException() = runTest {
         // setup
         mockkObject(EmbedBuilder)
 
-        val context = mockk<Context>()
-        val embed = mockk<AttachedEmbed>()
+        val context = mockk<Context>(relaxed = true)
+        SessionManager.initialize(context)
+
+        val dummyEmbed = AttachedEmbed(
+            type = BlueskyTypes.EmbedImages,
+            filename = "dummy.jpg",
+            contentType = "image/jpeg",
+            blob = ByteArray(1)
+        )
         val repo = MainRepository()
-        coEvery { EmbedBuilder.uploadBlob(embed) } throws Exception("invalid file")
+        coEvery { EmbedBuilder.uploadBlob(dummyEmbed) } throws IllegalStateException("Failed to upload all images")
 
         // Act
         val result = repo.postText(
             context = context,
             postText = "テスト投稿",
-            embeds = listOf(embed)
+            embeds = listOf(dummyEmbed)
         )
 
         // Assert
         assertTrue(result is PostResult.Error)
-        assertEquals("投稿に失敗しました", result.message)
+        assertEquals("画像や動画のアップロードに失敗しました: Failed to upload all images", result.message)
     }
 }

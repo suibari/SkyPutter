@@ -15,8 +15,6 @@ import work.socialhub.kbsky.auth.AuthProvider
 import work.socialhub.kbsky.auth.BearerTokenAuthProvider
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 
-private val Context.dataStore by preferencesDataStore(name = "session")
-
 object SessionKeys {
     val host = stringPreferencesKey("host")
     val accessJwt = stringPreferencesKey("access_jwt")

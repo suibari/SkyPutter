@@ -88,11 +88,11 @@ open class MainRepository {
 
         } catch (e: IllegalArgumentException) {
             // 入力値がおかしい場合（blobがnullなど）
-            PostResult.Error("添付ファイルが不正です（${e.message}）", e)
+            PostResult.Error("添付ファイルが不正です: ${e.message}", e)
 
         } catch (e: IllegalStateException) {
             // アプリ内の状態異常（uploadBlob失敗など）
-            PostResult.Error("画像や動画のアップロードに失敗しました（${e.message}）", e)
+            PostResult.Error("画像や動画のアップロードに失敗しました: ${e.message}", e)
 
         } catch (e: IOException) {
             // 通信エラー
@@ -100,7 +100,7 @@ open class MainRepository {
 
         } catch (e: Exception) {
             // その他未分類
-            PostResult.Error("投稿に失敗しました（${e.localizedMessage}）", e)
+            PostResult.Error("投稿に失敗しました: ${e.message}", e)
         }
     }
 
