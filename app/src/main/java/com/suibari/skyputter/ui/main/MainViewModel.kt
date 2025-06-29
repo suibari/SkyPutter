@@ -235,4 +235,23 @@ open class MainViewModel(
     fun getProfile(): ActorDefsProfileViewDetailed? {
         return _profile.value
     }
+
+    /**
+     * mutable変数のログ出力
+     */
+    fun getDebugLogSnapshot(): String {
+        return buildString {
+            appendLine("MainViewModel.uiState: ${uiState.value}")
+            appendLine("MainViewModel.profile: ${profile.value}")
+            appendLine("MainViewModel.parentPostRecord.uri: ${parentPostRecord?.uri}")
+            embeds.forEachIndexed { index, embed ->
+                appendLine("MainViewModel.embed.images[$index].filename ${embed.filename}")
+                appendLine("MainViewModel.embed.images[$index].uriString ${embed.uriString}")
+                appendLine("MainViewModel.embed.images[$index].blob (size) ${embed.blob?.size}")
+                appendLine("MainViewModel.embed.images[$index].contentType ${embed.contentType}")
+                appendLine("MainViewModel.embed.images[$index].aspectRatio ${embed.aspectRatio}")
+            }
+            appendLine("MainViewModel.postText: $postText")
+        }
+    }
 }

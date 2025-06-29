@@ -340,6 +340,7 @@ class MainActivity : ComponentActivity() {
                 when (initState) {
                     is ViewModelContainer.InitializationState.Completed -> {
                         SettingsScreen(
+                            mainViewModel = mainVM!!,
                             onBack = {
                                 navController.navigate("main") {
                                     popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移

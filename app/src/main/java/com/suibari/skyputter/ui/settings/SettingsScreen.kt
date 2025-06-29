@@ -9,11 +9,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.suibari.skyputter.data.settings.NotificationSettings
+import com.suibari.skyputter.ui.main.MainViewModel
+import com.suibari.skyputter.util.DebugLogUtil
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    mainViewModel: MainViewModel,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -40,6 +43,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+            // 通知関連
             Text("通知設定", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
@@ -57,6 +61,22 @@ fun SettingsScreen(
                         }
                     }
                 )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // デバッグ関連
+            Text("デバッグ", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+
+            Button(onClick = {
+                coroutineScope.launch {
+                    // ログ出力して共有Intent起動
+                    val logFile = DebugLogUtil.writeDebugLogToFile(context, mainViewModel)
+                    DebugLogUtil.shareLogFile(context, logFile)
+                }
+            }) {
+                Text("デバッグログを共有")
             }
         }
     }
