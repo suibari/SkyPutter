@@ -238,7 +238,7 @@ object EmbedBuilder {
 
             return EmbedVideo().also {
                 it.video = blob
-                it.alt = embed.filename
+                it.alt = "video0"
                 it.aspectRatio = embed.aspectRatio
             }
 
