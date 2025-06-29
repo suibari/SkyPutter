@@ -139,6 +139,9 @@ class MainActivity : ComponentActivity() {
         // 初期化状態を監視
         val initState = viewModelContainer.initializationState
 
+        val mainVM = viewModelContainer.mainViewModel
+        val profile = mainVM?.profile?.value
+
         NavHost(
             navController = navController,
             startDestination = if (hasSession) Screen.Main.route else Screen.Login.route
@@ -281,23 +284,19 @@ class MainActivity : ComponentActivity() {
             }
 
             composable(Screen.UserPost.route) {
-                when (initState) {
-                    is ViewModelContainer.InitializationState.Completed -> {
-                        viewModelContainer.userPostViewModel?.let { userPostVM ->
-                            UserPostListScreen(
-                                viewModel = userPostVM,
-                                mainViewModel = viewModelContainer.mainViewModel!!,
-                                myDid = myDid!!,
-                                onNavigateToMain = {
-                                    navController.navigate("main") {
-                                        Log.d("Nav", "Navigating to Main")
-                                        navController.popBackStack()
-                                    }
-                                },
-                            )
-                        } ?: LoadingScreen()
-                    }
-                    else -> LoadingScreen()
+                if (mainVM != null && profile?.did != null) {
+                    UserPostListScreen(
+                        viewModel = viewModelContainer.userPostViewModel!!,
+                        mainViewModel = mainVM,
+                        myDid = profile.did,
+                        onNavigateToMain = {
+                            navController.navigate(Screen.UserPost.route) {
+                                popUpTo(Screen.UserPost.route) { inclusive = true }
+                            }
+                        }
+                    )
+                } else {
+                    LoadingScreen()
                 }
             }
 
