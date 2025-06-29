@@ -37,6 +37,10 @@ android {
     buildFeatures {
         compose = true
     }
+    // Android標準のLogなどがモックされていない場合に、スルーする
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {

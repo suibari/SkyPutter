@@ -86,21 +86,47 @@ open class MainRepository {
 
             PostResult.Success
 
-        } catch (e: IllegalArgumentException) {
-            // 入力値がおかしい場合（blobがnullなど）
-            PostResult.Error("添付ファイルが不正です: ${e.message}", e)
+        } catch (e: EmbedException.InvalidInput) {
+            val message = when (e.field) {
+                "filename" -> "添付ファイルの名前が正しく設定されていません"
+                "contentType" -> "添付ファイルの形式が不正です"
+                "blob" -> "添付ファイルが正しく読み込まれていません"
+                "urlString" -> "リンクのURLが正しく設定されていません"
+                "ref" -> "引用する投稿が正しく選択されていません"
+                "embeds" -> "画像が選択されていません"
+                else -> "入力データが不正です: ${e.field}"
+            }
+            PostResult.Error(message, e)
 
-        } catch (e: IllegalStateException) {
-            // アプリ内の状態異常（uploadBlob失敗など）
-            PostResult.Error("画像や動画のアップロードに失敗しました: ${e.message}", e)
+        } catch (e: EmbedException.UploadFailed) {
+            PostResult.Error("ファイル「${e.filename}」のアップロードに失敗しました", e)
+
+        } catch (e: EmbedException.VideoProcessingFailed) {
+            PostResult.Error("動画の処理に失敗しました", e)
+
+        } catch (e: EmbedException.VideoProcessingTimeout) {
+            PostResult.Error("動画の処理がタイムアウトしました", e)
+
+        } catch (e: EmbedException.ExternalEmbedFailed) {
+            PostResult.Error("外部リンクの処理に失敗しました", e)
+
+        } catch (e: EmbedException.ImageEmbedFailed) {
+            PostResult.Error("画像の処理に失敗しました", e)
+
+        } catch (e: EmbedException.RecordEmbedFailed) {
+            PostResult.Error("引用投稿の処理に失敗しました", e)
+
+        } catch (e: EmbedException.VideoEmbedFailed) {
+            PostResult.Error("動画の処理に失敗しました", e)
+
+        } catch (e: EmbedException.EmbedUnionFailed) {
+            PostResult.Error("添付コンテンツの処理に失敗しました", e)
 
         } catch (e: IOException) {
-            // 通信エラー
-            PostResult.Error("通信エラーが発生しました。ネットワークをご確認ください。", e)
+            PostResult.Error("通信エラーが発生しました。ネットワークをご確認ください", e)
 
         } catch (e: Exception) {
-            // その他未分類
-            PostResult.Error("投稿に失敗しました: ${e.message}", e)
+            PostResult.Error("投稿に失敗しました", e)
         }
     }
 

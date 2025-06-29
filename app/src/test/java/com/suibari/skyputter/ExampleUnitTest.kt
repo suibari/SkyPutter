@@ -2,6 +2,7 @@ package com.suibari.skyputter
 
 import android.content.Context
 import com.suibari.skyputter.data.repository.EmbedBuilder
+import com.suibari.skyputter.data.repository.EmbedException
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.ui.main.AttachedEmbed
@@ -35,7 +36,11 @@ class MainRepoUnitTest {
             blob = ByteArray(1)
         )
         val repo = MainRepository()
-        coEvery { EmbedBuilder.uploadBlob(dummyEmbed) } throws IllegalStateException("Failed to upload all images")
+
+        coEvery { EmbedBuilder.uploadBlob(dummyEmbed) } throws EmbedException.UploadFailed(
+            filename = dummyEmbed.filename.toString(),
+            cause = Exception(),
+        )
 
         // Act
         val result = repo.postText(
@@ -45,7 +50,15 @@ class MainRepoUnitTest {
         )
 
         // Assert
+        if (result is PostResult.Error) {
+            println("Exception type: ${result.exception?.javaClass?.name}")
+            println("Exception message: ${result.exception?.message}")
+            println("Exception cause: ${result.exception?.cause?.javaClass?.name}")
+        }
         assertTrue(result is PostResult.Error)
-        assertEquals("画像や動画のアップロードに失敗しました: Failed to upload all images", result.message)
+        assertEquals("ファイル「${dummyEmbed.filename}」のアップロードに失敗しました", result.message)
+
+        // uploadBlobが呼ばれたか
+        coVerify(exactly = 1) { EmbedBuilder.uploadBlob(dummyEmbed) }
     }
 }
