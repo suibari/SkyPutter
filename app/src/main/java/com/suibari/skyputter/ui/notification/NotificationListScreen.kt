@@ -19,7 +19,7 @@ import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 fun NotificationListScreen(
     viewModel: NotificationViewModel,
     mainViewModel: MainViewModel,
-    onNavigateToMain: () -> Unit
+    onBack: () -> Unit
 ) {
     val notifications = viewModel.items
     val coroutineScope = rememberCoroutineScope()
@@ -47,7 +47,7 @@ fun NotificationListScreen(
         mainViewModel = mainViewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
-        onBack = { onNavigateToMain() },
+        onBack = { onBack() },
         onRefresh = {
             viewModel.markAllAsReadAndReload()
         },

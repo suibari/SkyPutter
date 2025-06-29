@@ -268,10 +268,9 @@ class MainActivity : ComponentActivity() {
                             NotificationListScreen(
                                 viewModel = notificationVM,
                                 mainViewModel = mainVM,
-                                onNavigateToMain = {
+                                onBack = {
                                     navController.navigate("main") {
-                                        Log.d("Nav", "Navigating to Main")
-                                        navController.popBackStack()
+                                        popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
                                     }
                                 }
                             )
@@ -289,9 +288,9 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModelContainer.userPostViewModel!!,
                         mainViewModel = mainVM,
                         myDid = profile.did,
-                        onNavigateToMain = {
-                            navController.navigate(Screen.UserPost.route) {
-                                popUpTo(Screen.UserPost.route) { inclusive = true }
+                        onBack = {
+                            navController.navigate("main") {
+                                popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
                             }
                         }
                     )
@@ -299,29 +298,6 @@ class MainActivity : ComponentActivity() {
                     LoadingScreen()
                 }
             }
-
-//            composable(Screen.LikesBack.route) {
-//                when (initState) {
-//                    is ViewModelContainer.InitializationState.Completed -> {
-//                        val likesBackVM = viewModelContainer.likesBackViewModel
-//                        val mainVM = viewModelContainer.mainViewModel
-//
-//                        if (likesBackVM != null && mainVM != null) {
-//                            LikesBackScreen(
-//                                viewModel = likesBackVM,
-//                                mainViewModel = mainVM,
-//                                myDid = myDid!!,
-//                                onNavigateToMain = {
-//                                    navController.navigate("main")
-//                                }
-//                            )
-//                        } else {
-//                            LoadingScreen()
-//                        }
-//                    }
-//                    else -> LoadingScreen()
-//                }
-//            }
 
             composable(Screen.Draft.route) {
                 when (initState) {

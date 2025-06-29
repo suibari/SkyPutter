@@ -34,7 +34,7 @@ fun UserPostListScreen(
     viewModel: UserPostViewModel,
     mainViewModel: MainViewModel,
     myDid: String,
-    onNavigateToMain: () -> Unit,
+    onBack: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var postToDelete by remember { mutableStateOf<DisplayFeed?>(null) }
@@ -46,7 +46,7 @@ fun UserPostListScreen(
         mainViewModel = mainViewModel,
         isRefreshing = viewModel.isRefreshing,
         isLoadingMore = viewModel.isLoadingMore,
-        onBack = { onNavigateToMain() },
+        onBack = { onBack() },
         onRefresh = { viewModel.loadInitialItems() },
         onLoadMore = { viewModel.loadMoreItems() },
         itemKey = { it.uri!! },
