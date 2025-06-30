@@ -8,7 +8,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.suibari.skyputter.data.settings.NotificationSettings
+import com.suibari.skyputter.data.settings.SuggestionSettings
 import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.util.DebugLogUtil
 import kotlinx.coroutines.launch
@@ -16,16 +18,26 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    myDid: String,
+    viewModel: SettingsViewModel,
     mainViewModel: MainViewModel,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // DataStoreから直接購読
+    // 通知設定状態
     val isNotificationPollingEnabled by NotificationSettings
         .getNotificationPollingEnabled(context)
         .collectAsState(initial = true)
+
+    // サジェスト機能状態
+    val isSuggestionEnabled by SuggestionSettings
+        .getSuggestionEnabled(context)
+        .collectAsState(initial = false)
+
+    // ダイアログ表示制御
+    var showSuggestionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -43,7 +55,7 @@ fun SettingsScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // 通知関連
+            // 通知設定
             Text("通知設定", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
@@ -65,13 +77,38 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(24.dp))
 
-            // デバッグ関連
+            // サジェスト設定
+            Text("サジェスト", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("過去ポストからのサジェスト表示")
+                Spacer(Modifier.weight(1f))
+                Switch(
+                    checked = isSuggestionEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            showSuggestionDialog = true
+                        } else {
+                            coroutineScope.launch {
+                                SuggestionSettings.setSuggestionEnabled(context, false)
+                            }
+                        }
+                    }
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // デバッグ
             Text("デバッグ", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
 
             Button(onClick = {
                 coroutineScope.launch {
-                    // ログ出力して共有Intent起動
                     val logFile = DebugLogUtil.writeDebugLogToFile(context, mainViewModel)
                     DebugLogUtil.shareLogFile(context, logFile)
                 }
@@ -79,5 +116,36 @@ fun SettingsScreen(
                 Text("デバッグログを共有")
             }
         }
+    }
+
+    // ダイアログ：Wi-Fi推奨
+    if (showSuggestionDialog) {
+        AlertDialog(
+            onDismissRequest = { showSuggestionDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSuggestionDialog = false
+                    coroutineScope.launch {
+                        SuggestionSettings.setSuggestionEnabled(context, true)
+
+                        // 収集処理
+                        viewModel.initializeSuggestion(myDid)
+                    }
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showSuggestionDialog = false
+                }) {
+                    Text("キャンセル")
+                }
+            },
+            title = { Text("Wi-Fi環境推奨") },
+            text = {
+                Text("初回のデータ収集には通信量がかかります。Wi-Fi環境下での実行を推奨します。")
+            }
+        )
     }
 }

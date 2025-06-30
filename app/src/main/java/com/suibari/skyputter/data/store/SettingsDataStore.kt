@@ -38,3 +38,14 @@ object NotificationSettings {
         }
     }
 }
+
+object SuggestionSettings {
+    private val SUGGESTION_ENABLED = booleanPreferencesKey("suggestion_enabled")
+
+    fun getSuggestionEnabled(context: Context): Flow<Boolean> =
+        context.settingsDataStore.data.map { it[SUGGESTION_ENABLED] ?: false }
+
+    suspend fun setSuggestionEnabled(context: Context, enabled: Boolean) {
+        context.settingsDataStore.edit { it[SUGGESTION_ENABLED] = enabled }
+    }
+}

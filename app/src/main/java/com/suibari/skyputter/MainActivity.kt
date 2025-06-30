@@ -11,9 +11,11 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.NotificationRepoProvider
+import com.suibari.skyputter.data.repository.SuggestionRepository
 import com.suibari.skyputter.data.repository.UserPostRepository
 import com.suibari.skyputter.ui.about.AboutScreen
 import com.suibari.skyputter.ui.draft.DraftScreen
@@ -25,6 +27,7 @@ import com.suibari.skyputter.ui.notification.NotificationListScreen
 import com.suibari.skyputter.ui.post.UserPostListScreen
 import com.suibari.skyputter.ui.post.UserPostViewModel
 import com.suibari.skyputter.ui.settings.SettingsScreen
+import com.suibari.skyputter.ui.settings.SettingsViewModel
 import com.suibari.skyputter.ui.theme.SkyPutterTheme
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
@@ -119,7 +122,6 @@ class MainActivity : ComponentActivity() {
                 AppNavigation(
                     context = context,
                     hasSession = state.hasSession,
-                    myDid = state.myDid
                 )
             }
         }
@@ -129,7 +131,6 @@ class MainActivity : ComponentActivity() {
     private fun AppNavigation(
         context: Context,
         hasSession: Boolean,
-        myDid: String?
     ) {
         val navController = rememberNavController()
 
@@ -339,8 +340,11 @@ class MainActivity : ComponentActivity() {
             composable(Screen.Settings.route) {
                 when (initState) {
                     is ViewModelContainer.InitializationState.Completed -> {
+                        if (profile == null || viewModelContainer.settingsViewModel == null) return@composable
                         SettingsScreen(
-                            mainViewModel = mainVM!!,
+                            myDid = profile.did,
+                            viewModel = viewModelContainer.settingsViewModel!!,
+                            mainViewModel = mainVM,
                             onBack = {
                                 navController.navigate("main") {
                                     popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
@@ -388,7 +392,9 @@ class MainActivity : ComponentActivity() {
 }
 
 // ViewModelを管理するクラス
-class ViewModelContainer(private val context: Context) {
+class ViewModelContainer(
+    private val context: Context,
+) {
 
     // 初期化状態を管理
     private var _initializationState by mutableStateOf<InitializationState>(InitializationState.NotStarted)
@@ -400,6 +406,8 @@ class ViewModelContainer(private val context: Context) {
     var userPostViewModel: UserPostViewModel? by mutableStateOf(null)
         private set
     var draftViewModel: DraftViewModel? by mutableStateOf(null)
+        private set
+    var settingsViewModel: SettingsViewModel? by mutableStateOf(null)
         private set
     var mainViewModel: MainViewModel? by mutableStateOf(null)
         private set
@@ -436,6 +444,7 @@ class ViewModelContainer(private val context: Context) {
                 val deviceNotifier = DeviceNotifier(context)
                 val notificationRepo = NotificationRepoProvider.getInstance(context)
                 val userPostRepo = UserPostRepository()
+                val suggestionRepository = SuggestionRepository()
                 val mainRepo = MainRepository()
 
                 Log.d("ViewModelContainer", "Repositories initialized")
@@ -452,8 +461,10 @@ class ViewModelContainer(private val context: Context) {
 
                     userPostViewModel = UserPostViewModel(userPostRepo)
                     draftViewModel = DraftViewModel(context)
+                    settingsViewModel = SettingsViewModel(suggestionRepository, context)
 
                     mainViewModel = MainViewModel(
+                        application = application,
                         repo = mainRepo,
                         userPostViewModel = userPostViewModel!!,
                         notificationViewModel = notificationViewModel!!,

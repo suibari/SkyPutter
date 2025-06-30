@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.main
 
+import android.app.Application
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.MutableState
@@ -7,8 +8,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.suibari.skyputter.data.db.SuggestionDatabase
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.data.repository.ProfileResult
@@ -16,6 +19,8 @@ import com.suibari.skyputter.data.repository.OgImageResult
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -39,10 +44,11 @@ data class UiState(
 )
 
 open class MainViewModel(
+    application: Application,
     private val repo: MainRepository,
     val userPostViewModel: UserPostViewModel,
     val notificationViewModel: NotificationViewModel,
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     protected var _uiState = mutableStateOf(UiState())
     val uiState: MutableState<UiState> = _uiState
@@ -72,6 +78,10 @@ open class MainViewModel(
     // セッション不正（ログアウトが必要）を通知するフロー
     private val _requireLogout = MutableStateFlow(false)
     val requireLogout = _requireLogout.asStateFlow()
+
+    // サジェスト
+    private val suggestionDao = SuggestionDatabase.getInstance(application).suggestionDao()
+    private var searchJob: Job? = null
 
     private var initializing = false
     fun initialize(context: Context) {
@@ -256,6 +266,32 @@ open class MainViewModel(
                 appendLine("MainViewModel.embed.images[$index].aspectRatio ${embed.aspectRatio}")
             }
             appendLine("MainViewModel.postText: $postText")
+        }
+    }
+
+    /**
+     * 投稿テキストの入力変化に応じてサジェスト検索し、ログに出力する
+     * デバウンス300ms付き
+     */
+    fun searchSuggestionsDebounced(input: String) {
+        searchJob?.cancel()
+        if (input.isBlank()) return
+
+        val query = input.trim()
+            .split("\\s+".toRegex())
+            .joinToString(" OR ") { "$it*" } // 部分一致
+
+        searchJob = viewModelScope.launch {
+            delay(300)
+            try {
+                val results = suggestionDao.searchByTokens(query)
+                Log.d("MainViewModel", "サジェストクエリ='$query', 件数=${results.size}")
+                results.take(5).forEach {
+                    Log.d("MainViewModel", "サジェスト候補: ${it.text}")
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "サジェスト検索失敗", e)
+            }
         }
     }
 }

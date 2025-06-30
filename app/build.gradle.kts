@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
+    id("kotlin-kapt")
 }
 
 android {
@@ -101,6 +103,13 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.3.0")
     implementation("androidx.media3:media3-common:1.3.0")
     implementation("androidx.media3:media3-exoplayer-hls:1.3.1") // HLS(.m3u8)再生用
+
+    // サジェスト機能
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    val roomVersion = "2.7.2"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 
     // === 1分間隔通知のための追加依存関係 ===
     // フォアグラウンドサービス用

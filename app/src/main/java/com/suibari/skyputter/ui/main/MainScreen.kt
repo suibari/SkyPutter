@@ -334,6 +334,9 @@ fun MainScreen(
                 onPostTextChange = { it ->
                     viewModel.postText = it
 
+                    // サジェスト検索呼び出し
+                    viewModel.searchSuggestionsDebounced(it)
+
                     // URL検出とOG画像取得
                     val match = urlRegex.find(it)
                     val foundUrl = match?.value?.trim()

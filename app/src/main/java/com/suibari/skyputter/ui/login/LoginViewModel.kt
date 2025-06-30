@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.login
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.util.SessionManager
@@ -44,6 +45,7 @@ class LoginViewModel : ViewModel() {
 
                 onSuccess()
             } catch (e: Exception) {
+                Log.e("LoginViewModel", "Login failed", e)
                 _errorMessage.value = "ログイン失敗：${e.message ?: "不明なエラー"}"
             } finally {
                 _isLoading.value = false
