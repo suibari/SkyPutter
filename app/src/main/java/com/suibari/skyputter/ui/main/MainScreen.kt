@@ -226,9 +226,9 @@ fun MainScreen(
                                 }
                             }
                         } catch (e: Exception) {
-//                            withContext(Dispatchers.Main) {
-//                                viewModel.showError("ファイル読み込みエラー: ${e.message}")
-//                            }
+                            withContext(Dispatchers.Main) {
+                                viewModel.showError("ファイル読み込みエラー: ${e.message}")
+                            }
                         }
                     }
                 }

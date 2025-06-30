@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
@@ -21,18 +22,32 @@ object Util {
         val contentType = contentResolver.getType(uri) ?: "image/jpeg"
 
         val bitmap = contentResolver.openInputStream(uri)?.use { inputStream ->
+            // メタデータを削除（単純にBitmapFactoryで読み込めばEXIF等は破棄される）
             BitmapFactory.decodeStream(inputStream)
         } ?: throw IllegalArgumentException("画像を読み込めません")
 
         val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+        var quality = 100
+        var imageBytes: ByteArray
+
+        do {
+            outputStream.reset()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            imageBytes = outputStream.toByteArray()
+            quality -= 10
+            Log.i("getImageFromUri", "quality: $quality, size: ${imageBytes.size}")
+        } while (imageBytes.size > 1024 * 1024 && quality >= 10)
+
+        if (imageBytes.size > 1024 * 1024) {
+            throw IllegalArgumentException("画像が1MB以下に圧縮できませんでした")
+        }
 
         val aspectRatio = EmbedDefsAspectRatio().apply {
             width = bitmap.width
             height = bitmap.height
         }
 
-        Triple(outputStream.toByteArray(), contentType, aspectRatio)
+        Triple(imageBytes, "image/jpeg", aspectRatio)
     }
 
     // 動画のメタデータのみ取得（軽量）

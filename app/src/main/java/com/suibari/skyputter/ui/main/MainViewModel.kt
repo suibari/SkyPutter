@@ -196,6 +196,10 @@ open class MainViewModel(
         this.parentAuthor = null
     }
 
+    fun showError(message: String) {
+        _uiState.value = _uiState.value.copy(errorMessage = message)
+    }
+
     fun addEmbed(newEmbed: AttachedEmbed) {
         _embeds.add(newEmbed)
     }
