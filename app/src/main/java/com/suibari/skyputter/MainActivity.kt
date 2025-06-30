@@ -15,7 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.NotificationRepoProvider
-import com.suibari.skyputter.data.repository.SuggestionRepository
+import com.suibari.skyputter.data.repository.SuggestionBuilder
 import com.suibari.skyputter.data.repository.UserPostRepository
 import com.suibari.skyputter.ui.about.AboutScreen
 import com.suibari.skyputter.ui.draft.DraftScreen
@@ -444,7 +444,6 @@ class ViewModelContainer(
                 val deviceNotifier = DeviceNotifier(context)
                 val notificationRepo = NotificationRepoProvider.getInstance(context)
                 val userPostRepo = UserPostRepository()
-                val suggestionRepository = SuggestionRepository()
                 val mainRepo = MainRepository()
 
                 Log.d("ViewModelContainer", "Repositories initialized")
@@ -461,7 +460,7 @@ class ViewModelContainer(
 
                     userPostViewModel = UserPostViewModel(userPostRepo)
                     draftViewModel = DraftViewModel(context)
-                    settingsViewModel = SettingsViewModel(suggestionRepository, context)
+                    settingsViewModel = SettingsViewModel(context)
 
                     mainViewModel = MainViewModel(
                         application = application,

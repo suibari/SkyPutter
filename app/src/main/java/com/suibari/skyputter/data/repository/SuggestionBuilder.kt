@@ -14,13 +14,14 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest.Filter
 
-class SuggestionRepository() {
+object SuggestionBuilder {
     suspend fun fetchOwnPosts(userDid: String, limit: Int = 1000): List<String> = withContext(Dispatchers.IO) {
         val posts = mutableListOf<String>()
         var cursor: String? = null
 
-        repeat(10) { // 最大1000件 = 100件×10ページ
+        while (true) {
             val response = SessionManager.runWithAuthRetry { auth ->
                 BlueskyFactory
                     .instance(BSKY_SOCIAL.uri)
@@ -28,22 +29,35 @@ class SuggestionRepository() {
                     .getAuthorFeed(
                         FeedGetAuthorFeedRequest(auth).also {
                             it.actor = userDid
-                            it.limit = limit
+                            it.limit = 100
                             it.cursor = cursor
+                            it.filter = Filter.PostsAndAuthorThreads
                         }
                     )
             }
+
             val items = response.data.feed
+                .filter { it.reason == null }
                 .mapNotNull { it.post.record?.asFeedPost?.text }
 
             posts.addAll(items)
-            cursor = response.data.cursor ?: return@repeat
+            Log.i("SuggestionRepo", "fetched ${items.size} posts (total=${posts.size})")
+
+            // 終了条件
+            if (posts.size >= limit || response.data.cursor == null) {
+                break
+            }
+
+            cursor = response.data.cursor
         }
 
         return@withContext posts.take(limit)
     }
 
-    suspend fun sendToMorphServer(texts: List<String>): List<SuggestionEntity> = withContext(Dispatchers.IO) {
+    /**
+     * 過去ポストをまとめて形態素解析サーバに投げ、結果をDBに格納するための関数
+     */
+    suspend fun sendToMorphServerAll(texts: List<String>): List<SuggestionEntity> = withContext(Dispatchers.IO) {
         try {
             val json = Json.encodeToString(mapOf("texts" to texts))
             val conn = URL("https://negaposi-api.onrender.com/analyze").openConnection() as HttpURLConnection
@@ -55,7 +69,6 @@ class SuggestionRepository() {
 
             val response = conn.inputStream.bufferedReader().readText()
             val jsonObject = Json.parseToJsonElement(response).jsonObject
-
             val wakatiList = jsonObject["wakati"]?.jsonArray ?: return@withContext emptyList()
 
             return@withContext wakatiList.mapIndexed { i, arr ->
@@ -63,8 +76,33 @@ class SuggestionRepository() {
                 SuggestionEntity(text = texts[i], tokens = tokens.toString())
             }
         } catch (e: Exception) {
-            Log.e("SuggestionRepo", "形態素解析失敗", e)
-            return@withContext emptyList()
+            Log.e("SuggestionBuilder", "sendToMorphServerAll failed", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * 入力テキストを形態素解析してクエリ化するための関数
+     */
+    suspend fun sendToMorphServerSingle(text: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val json = Json.encodeToString(mapOf("texts" to listOf(text)))
+            val conn = URL("https://negaposi-api.onrender.com/analyze").openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+
+            conn.outputStream.use { it.write(json.toByteArray()) }
+
+            val response = conn.inputStream.bufferedReader().readText()
+            val jsonObject = Json.parseToJsonElement(response).jsonObject
+            val tokensJsonArray = jsonObject["wakati"]?.jsonArray?.firstOrNull()?.jsonArray
+                ?: return@withContext emptyList()
+
+            return@withContext tokensJsonArray.map { it.jsonPrimitive.content }
+        } catch (e: Exception) {
+            Log.e("SuggestionBuilder", "sendToMorphServerSingle failed", e)
+            emptyList()
         }
     }
 }

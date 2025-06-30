@@ -16,9 +16,11 @@ import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.data.repository.ProfileResult
 import com.suibari.skyputter.data.repository.OgImageResult
+import com.suibari.skyputter.data.repository.SuggestionBuilder
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.post.UserPostViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -277,16 +280,27 @@ open class MainViewModel(
         searchJob?.cancel()
         if (input.isBlank()) return
 
-        val query = input.trim()
-            .split("\\s+".toRegex())
-            .joinToString(" OR ") { "$it*" } // 部分一致
-
         searchJob = viewModelScope.launch {
             delay(300)
+
             try {
+                // 形態素解析でトークンを取得
+                val tokens = withContext(Dispatchers.IO) {
+                    SuggestionBuilder.sendToMorphServerSingle(input)
+                }
+
+                if (tokens.isEmpty()) {
+                    Log.d("MainViewModel", "トークンなし、検索スキップ")
+                    return@launch
+                }
+
+                // ORでつないで部分一致検索用に整形
+                val query = tokens.joinToString(" OR ") { "$it*" }
+
                 val results = suggestionDao.searchByTokens(query)
-                Log.d("MainViewModel", "サジェストクエリ='$query', 件数=${results.size}")
-                results.take(5).forEach {
+
+                Log.d("MainViewModel", "Morph検索クエリ='$query', 件数=${results.size}")
+                results.forEach {
                     Log.d("MainViewModel", "サジェスト候補: ${it.text}")
                 }
             } catch (e: Exception) {

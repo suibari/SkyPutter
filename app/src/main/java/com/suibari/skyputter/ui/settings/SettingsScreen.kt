@@ -1,10 +1,12 @@
 package com.suibari.skyputter.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -14,6 +16,7 @@ import com.suibari.skyputter.data.settings.SuggestionSettings
 import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.util.DebugLogUtil
 import kotlinx.coroutines.launch
+import com.suibari.skyputter.ui.settings.SuggestionProgressState.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +41,9 @@ fun SettingsScreen(
 
     // ダイアログ表示制御
     var showSuggestionDialog by remember { mutableStateOf(false) }
+
+    // 過去ポスト収集ローディングサークル
+    val progress by viewModel.suggestionProgress.collectAsState()
 
     Scaffold(
         topBar = {
@@ -147,5 +153,31 @@ fun SettingsScreen(
                 Text("初回のデータ収集には通信量がかかります。Wi-Fi環境下での実行を推奨します。")
             }
         )
+    }
+
+    // ローディング中のオーバーレイ
+    if (progress != Idle) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = when (progress) {
+                        CollectingPosts -> "ポスト収集中...\n(10秒ほどかかります)"
+                        AnalyzingPosts -> "ポスト解析中...\n(30秒ほどかかります)"
+                        SavingSuggestions -> "デバイスに保存中..."
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
     }
 }
