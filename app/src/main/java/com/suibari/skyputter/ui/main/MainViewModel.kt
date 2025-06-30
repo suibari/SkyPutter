@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suibari.skyputter.data.db.SuggestionDatabase
+import com.suibari.skyputter.data.db.SuggestionEntity
 import com.suibari.skyputter.data.repository.MainRepository
 import com.suibari.skyputter.data.repository.PostResult
 import com.suibari.skyputter.data.repository.ProfileResult
@@ -85,6 +86,8 @@ open class MainViewModel(
     // サジェスト
     private val suggestionDao = SuggestionDatabase.getInstance(application).suggestionDao()
     private var searchJob: Job? = null
+    private val _suggestions = MutableStateFlow<List<SuggestionEntity>>(emptyList())
+    val suggestions = _suggestions.asStateFlow()
 
     private var initializing = false
     fun initialize(context: Context) {
@@ -298,6 +301,7 @@ open class MainViewModel(
                 val query = tokens.joinToString(" OR ") { "$it*" }
 
                 val results = suggestionDao.searchByTokens(query)
+                _suggestions.value = results
 
                 Log.d("MainViewModel", "Morph検索クエリ='$query', 件数=${results.size}")
                 results.forEach {
@@ -307,5 +311,9 @@ open class MainViewModel(
                 Log.e("MainViewModel", "サジェスト検索失敗", e)
             }
         }
+    }
+
+    fun clearSuggestions() {
+        _suggestions.value = listOf<SuggestionEntity>()
     }
 }

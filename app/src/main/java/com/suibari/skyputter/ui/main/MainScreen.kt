@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.main
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -34,6 +35,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
+import com.suibari.skyputter.data.db.SuggestionEntity
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.theme.spacePadding
@@ -113,7 +115,7 @@ fun MainScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDialog.value = false
-                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
 
                     // ダイアログを表示済みに記録
                     coroutineScope.launch {
@@ -341,9 +343,14 @@ fun MainScreen(
                     val match = urlRegex.find(it)
                     val foundUrl = match?.value?.trim()
 
-                    // テキスト全消去 → URL履歴をリセット
+                    // テキスト全消去
                     if (it.isBlank()) {
+                        // URL履歴をリセット
                         lastFetchedUrl = null
+
+                        // サジェストリセット
+                        viewModel.clearSuggestions()
+
                         return@MainContent
                     }
 
@@ -519,6 +526,7 @@ private fun MainContent(
     embeds: List<AttachedEmbed>?
 ) {
     val hasReply = viewModel.parentPostRecord != null
+    val suggestionList by viewModel.suggestions.collectAsState()
 
     Column(
         modifier = modifier
@@ -528,7 +536,7 @@ private fun MainContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(if (hasReply) 5f else 6f)
+                .weight(4f)
         ) {
             TextField(
                 value = postText,
@@ -549,6 +557,12 @@ private fun MainContent(
                     .padding(8.dp)
             )
         }
+
+        SuggestionList(
+            suggestions = suggestionList,
+            modifier = Modifier.weight(1f),
+            onSuggestionClick = { null },
+        )
 
         // 返信先表示
         if (hasReply) {
@@ -571,6 +585,45 @@ private fun MainContent(
                 .weight(1f),
             onClear = { viewModel.clearEmbed(it) }
         )
+    }
+}
+
+@Composable
+fun SuggestionList(
+    suggestions: List<SuggestionEntity>,
+    modifier: Modifier,
+    onSuggestionClick: (String) -> Unit
+) {
+    if (suggestions.isEmpty()) return
+
+    Card(
+        modifier = modifier
+            .padding(top = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
+            Text(
+                text = "サジェスト",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            suggestions.takeLast(1).forEach { item ->
+                TextButton(
+                    onClick = { onSuggestionClick(item.text) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = item.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -785,7 +838,7 @@ private fun AttachedImageCard(
                         modifier = Modifier
                             .background(
                                 Color.Black.copy(alpha = 0.5f),
-                                shape = androidx.compose.foundation.shape.CircleShape
+                                shape = CircleShape
                             )
                             .padding(2.dp)
                     )
@@ -800,7 +853,7 @@ private fun AttachedImageCard(
  */
 fun Context.hasNotificationPermission(): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) ==
+        ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
     } else {
         true // Android 12以下は不要
