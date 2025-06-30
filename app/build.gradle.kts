@@ -12,8 +12,14 @@ android {
         applicationId = "com.suibari.skyputter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4 // リリース時はここをインクリメント
-        versionName = "1.0"
+
+        val major = 0
+        val minor = 0
+        val patch = 4
+        defaultConfig {
+            versionCode = major * 10000 + minor * 100 + patch
+            versionName = "v$major.$minor.$patch"
+        }
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
