@@ -10,10 +10,7 @@ import java.net.URL
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.*
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest.Filter
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
@@ -76,18 +73,24 @@ object SuggestionBuilder {
 
             val response = conn.inputStream.bufferedReader().readText()
             val jsonObject = Json.parseToJsonElement(response).jsonObject
-            val wakatiList = jsonObject["wakati"]?.jsonArray ?: return@withContext emptyList()
+
+            // "nouns" は List<List<String>> 形式で返ってくる前提
+            val nounsList = jsonObject["nouns"]?.jsonArray ?: return@withContext emptyList()
             val sentimentList = jsonObject["average_sentiments"]?.jsonArray ?: return@withContext emptyList()
 
             // DB保存
-            return@withContext wakatiList.mapIndexedNotNull { i, arr ->
-                // 元のポストとsentimentが揃っていない場合に備えてnull安全に処理
+            return@withContext nounsList.mapIndexedNotNull { i, element ->
                 val post = posts.getOrNull(i) ?: return@mapIndexedNotNull null
-                val sentiment = sentimentList.getOrNull(i) ?: return@mapIndexedNotNull null
-                val tokens = arr.jsonArray.map { it.jsonPrimitive.content }
+                val sentiment = sentimentList.getOrNull(i)?.jsonPrimitive?.floatOrNull ?: return@mapIndexedNotNull null
 
-                val tokensString = tokens.joinToString(" ") // FTS用に空白区切りで保存
-                Log.i("SuggestionBuilder", "text: ${post.text}, tokens: $tokensString, sentiment: $sentiment, createdAt: ${post.createdAt}")
+                // 各ポストに対応する名詞のリストを取得
+                val tokens = element.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+                val tokensString = tokens.joinToString(" ") // 空白区切り
+
+                Log.i(
+                    "SuggestionBuilder",
+                    "text: ${post.text}, tokens: $tokensString, sentiment: $sentiment, createdAt: ${post.createdAt}"
+                )
 
                 SuggestionEntity(
                     text = post.text ?: "",
@@ -117,10 +120,14 @@ object SuggestionBuilder {
 
             val response = conn.inputStream.bufferedReader().readText()
             val jsonObject = Json.parseToJsonElement(response).jsonObject
-            val tokensJsonArray = jsonObject["wakati"]?.jsonArray?.firstOrNull()?.jsonArray
-                ?: return@withContext emptyList()
+            val nounsList = jsonObject["nouns"]?.jsonArray ?: return@withContext emptyList()
 
-            return@withContext tokensJsonArray.map { it.jsonPrimitive.content }
+            // nounsList: <List<List<String>>> なのでそれに対応
+            val flattenedNouns = nounsList.flatMap { innerElement ->
+                innerElement.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+            }
+
+            return@withContext flattenedNouns
         } catch (e: Exception) {
             Log.e("SuggestionBuilder", "sendToMorphServerSingle failed", e)
             emptyList()
