@@ -407,18 +407,23 @@ fun DisplayVideo(
 }
 
 @Composable
-fun DisplayExternal(authorDid: String, external: EmbedExternalExternal) {
+fun DisplayExternal(
+    authorDid: String,
+    uri: String,
+    title: String,
+    thumb: String? = null,
+    cid: String? = null,
+) {
     val context = LocalContext.current
-    val uri = external.uri
-    val title = external.title
-    val thumb = external.thumb
 
-    // サムネイルURL取得
-    val thumbUrl = BskyUtil.buildCdnImageUrl(
-        did = authorDid,
-        cid = external.thumb?.ref?.link.toString(),
-        variant = "feed_thumbnail",
-    )
+    // サムネイルURL取得: Notification側だとURLが入っていないので
+    var thumbUrl: String = if (cid != null) {
+        BskyUtil.buildCdnImageUrl(
+            did = authorDid,
+            cid = cid,
+            variant = "feed_thumbnail",
+        )
+    } else thumb ?: return
 
     Column(
         modifier = Modifier
@@ -528,7 +533,6 @@ fun DisplayActions(
         }
     }
 }
-
 
 @Composable
 fun DisplayParentPost(authorName: String?, record: FeedPost?) {

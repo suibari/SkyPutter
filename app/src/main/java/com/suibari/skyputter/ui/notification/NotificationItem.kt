@@ -87,7 +87,12 @@ fun NotificationItem(
 
                 // リンクカード
                 if (external != null) {
-                    DisplayExternal(did, external)
+                    DisplayExternal(
+                        authorDid = did,
+                        title = external.title,
+                        uri = external.uri,
+                        cid = external.thumb?.ref?.link,
+                    )
                 }
 
                 // 返信

@@ -45,38 +45,49 @@ fun PostItem(
         RepoStrongRef(it.uri!!, it.cid!!)
     } ?: subjectRef
 
-    val images: List<DisplayImage>? = feed.raw.post.embed?.asImages?.images?.map {
-        DisplayImage(
-            urlThumb = it.thumb!!,
-            urlFullsize = it.fullsize!!,
-            alt = it.alt,
-        )
-    }
+    val embed = feed.raw.post.embed
+    val recordWithMedia = embed?.asRecordWithMedia
 
-    val video: EmbedVideoView? = feed.raw.post.embed?.asVideo
+    val quotePost = recordWithMedia?.record?.record?.asRecord?.value?.asFeedPost
+        ?: embed?.asRecord?.record?.asRecord?.value?.asFeedPost
 
-    val external = record.embed?.asExternal?.external
+    val quoteAuthor = recordWithMedia?.record?.record?.asRecord?.author
+        ?: embed?.asRecord?.record?.asRecord?.author
 
-    // 2段階boxとし、1つ目のboxで背景を設定、2つ目のboxでコンテンツ描画
-    // これによりスワイプ削除をうまく機能させる
-    Box (Modifier
-        .background(MaterialTheme.colorScheme.background)
-        .fillMaxSize()
+    val images: List<DisplayImage>? = (
+            recordWithMedia?.media?.asImages?.images
+                ?: embed?.asImages?.images
+            )?.map {
+            DisplayImage(
+                urlThumb = it.thumb!!,
+                urlFullsize = it.fullsize!!,
+                alt = it.alt,
+            )
+        }
+
+    val video = recordWithMedia?.media?.asVideo
+        ?: embed?.asVideo
+
+    val external = recordWithMedia?.media?.asExternal?.external
+        ?: embed?.asExternal?.external
+
+    Box(
+        Modifier
+            .background(MaterialTheme.colorScheme.background)
+            .fillMaxSize()
     ) {
-        Box (Modifier
-            .itemPadding
-        ) {
+        Box(Modifier.itemPadding) {
             Row {
                 // ヘッダー
                 DisplayHeader(
                     avatarUrl = feed.raw.post.author?.avatar,
                 )
 
-                Spacer (Modifier.spacePadding)
+                Spacer(Modifier.spacePadding)
 
                 // メインコンテンツ
                 Column {
-                    DisplayContent (
+                    DisplayContent(
                         text = record.text,
                         authorName = feed.raw.post.author?.displayName,
                         images = images,
@@ -85,36 +96,43 @@ fun PostItem(
                     )
 
                     DisplayActions(
-                        isMyPost = false, // trueでアクションボタンが消える。暫定false(常に表示)
+                        isMyPost = false,
                         isLiked = isLiked,
                         isReposted = isReposted,
                         subjectRef = subjectRef,
                         rootRef = rootRef,
                         feed = record,
-                        author = ActorDefsProfileView(), // 現状自分のポストのみ表示なので暫定措置
+                        author = ActorDefsProfileView(), // 自分のポストのみ表示ならこれで暫定OK
                         onReply = onReply,
                         onLike = onLike,
                         onRepost = onRepost,
                         onQuote = onQuote,
                     )
 
-                    // リンクカード
+                    // 外部リンクカード
                     if (external != null) {
-                        DisplayExternal(repo, external)
+                        DisplayExternal(
+                            authorDid = repo,
+                            title = external.title,
+                            thumb = external.thumb,
+                            uri = external.uri,
+                        )
                     }
 
-                    // 返信
+                    // 返信（親ポスト）
                     DisplayParentPost(
                         authorName = feed.raw.reply?.parent?.author?.displayName,
                         record = feed.raw.reply?.parent?.record?.asFeedPost,
                     )
-                    // 引用
+
+                    // 引用（record or recordWithMediaのrecord）
                     DisplayParentPost(
-                        authorName = feed.raw.post.embed?.asRecord?.record?.asRecord?.author?.displayName,
-                        record = feed.raw.post.embed?.asRecord?.record?.asRecord?.value?.asFeedPost,
+                        authorName = quoteAuthor?.displayName,
+                        record = quotePost,
                     )
                 }
             }
         }
     }
 }
+

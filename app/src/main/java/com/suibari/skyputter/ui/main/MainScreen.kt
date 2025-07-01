@@ -1095,7 +1095,9 @@ private fun AttachedRecordCard(
     if (embed?.post == null) return
 
     Row(
-        modifier = modifier.padding(top = 8.dp),
+        modifier = modifier
+            .padding(top = 8.dp)
+            .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1110,7 +1112,6 @@ private fun AttachedRecordCard(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(120.dp)
                 .padding(end = 4.dp) // 余白の統一感のため
         ) {
             Card(
