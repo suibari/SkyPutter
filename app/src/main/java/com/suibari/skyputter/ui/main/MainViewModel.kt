@@ -218,12 +218,7 @@ open class MainViewModel(
     }
 
     fun addEmbed(newEmbed: AttachedEmbed) {
-        // 新しいEmbedのタイプ
         val newType = newEmbed.type
-
-        // 共存を許す唯一の組み合わせ: newType == Record または Recordと共存できる他の1つ
-        val record = _embeds.find { it.type == BlueskyTypes.EmbedRecord }
-
         val mediaTypes = listOf(
             BlueskyTypes.EmbedImages,
             BlueskyTypes.EmbedVideo,
@@ -235,12 +230,17 @@ open class MainViewModel(
 
         // ---- Step 1: 許可されない組み合わせを排除 ----
         if (isMedia) {
-            // すでに存在する他のMediaがあればすべて除去（Record以外）
-            _embeds.removeAll { it.type in mediaTypes }
+            // 画像の場合は既存の画像は残し、他のメディアタイプのみ削除
+            if (newType == BlueskyTypes.EmbedImages) {
+                _embeds.removeAll { it.type == BlueskyTypes.EmbedVideo || it.type == BlueskyTypes.EmbedExternal }
+            } else {
+                // 動画・外部リンクの場合は、すべてのメディアタイプを削除
+                _embeds.removeAll { it.type in mediaTypes }
+            }
         }
 
         if (isRecord) {
-            // Recordは単体 or 既存Mediaと共存OKなので除去不要
+            // Recordは単体 or 既存Mediaと共存OKなので、既存のRecordのみ削除
             _embeds.removeAll { it.type == BlueskyTypes.EmbedRecord }
         }
 
@@ -250,7 +250,7 @@ open class MainViewModel(
             return
         }
 
-        // 同じタイプがあれば置換
+        // 同じタイプがあれば置換（画像以外）
         val existingIndex = _embeds.indexOfFirst { it.type == newType }
         if (existingIndex >= 0) {
             _embeds[existingIndex] = newEmbed
