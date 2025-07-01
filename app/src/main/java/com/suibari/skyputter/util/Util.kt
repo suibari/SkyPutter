@@ -4,9 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
+import android.media.ThumbnailUtils
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
+import android.util.Size
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
@@ -133,6 +137,57 @@ object Util {
             }
         }
         return null
+    }
+
+    /**
+     * 動画からサムネイルを取得
+     */
+    fun getVideoThumbnail(context: Context, uri: Uri): Bitmap? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10以降
+                val size = Size(300, 300) // サムネイルサイズ
+                context.contentResolver.loadThumbnail(uri, size, null)
+            } else {
+                // Android 9以前
+                val path = getRealPathFromURI(context, uri)
+                if (path != null) {
+                    ThumbnailUtils.createVideoThumbnail(
+                        path,
+                        MediaStore.Images.Thumbnails.MINI_KIND
+                    )
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("Util", "動画サムネイル取得エラー", e)
+            null
+        }
+    }
+
+    /**
+     * URI から実際のファイルパスを取得（Android 9以前用）
+     */
+    private fun getRealPathFromURI(context: Context, uri: Uri): String? {
+        return try {
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val columnIndex = it.getColumnIndex(MediaStore.Video.Media.DATA)
+                    if (columnIndex >= 0) {
+                        it.getString(columnIndex)
+                    } else {
+                        null
+                    }
+                } else {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("Util", "パス取得エラー", e)
+            null
+        }
     }
 
     fun formatDeviceLocaleDate(isoString: String): String {

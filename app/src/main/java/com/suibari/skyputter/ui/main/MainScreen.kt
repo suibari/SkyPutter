@@ -21,7 +21,9 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Reply
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -222,6 +224,7 @@ fun MainScreen(
                                 contentType?.startsWith("video/") == true -> {
                                     // 動画の場合はメタデータのみ取得、実際の処理は投稿時
                                     val aspectRatio = Util.getVideoAspectRatio(context, uri)
+                                    val thumbnailBitmap = Util.getVideoThumbnail(context, uri) // 新規追加
 
                                     withContext(Dispatchers.Main) {
                                         viewModel.addEmbed(
@@ -232,6 +235,7 @@ fun MainScreen(
                                                 blob = null, // 投稿時に処理
                                                 contentType = contentType,
                                                 aspectRatio = aspectRatio,
+                                                thumbnailBitmap = thumbnailBitmap,
                                             )
                                         )
                                     }
@@ -876,9 +880,54 @@ private fun AttachedImageCard(
                                 }
                             }
                         }
-                        // 動画: TODO
+                        // 動画: サムネイル表示 + 再生アイコン
                         embed.type == BlueskyTypes.EmbedVideo -> {
-                            Text("動画")
+                            Box(
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                // サムネイル表示
+                                if (embed.thumbnailBitmap != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(embed.thumbnailBitmap)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Video Thumbnail",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    // サムネイルがない場合のフォールバック
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VideoLibrary, // または適切な動画アイコン
+                                            contentDescription = "Video",
+                                            modifier = Modifier.size(48.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                // 再生アイコンをオーバーレイ
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Play Video",
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(48.dp)
+                                        .background(
+                                            Color.Black.copy(alpha = 0.6f),
+                                            shape = CircleShape
+                                        )
+                                        .padding(8.dp),
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.main
 
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.core.net.toUri
 import work.socialhub.kbsky.BlueskyTypes
@@ -22,6 +23,8 @@ data class AttachedEmbed(
     // Record
     var ref: RepoStrongRef? = null,
     var post: FeedPost? = null,
+    // Video
+    var thumbnailBitmap: Bitmap? = null,
 ) {
     val uri: Uri?
         get() = uriString?.toUri()
