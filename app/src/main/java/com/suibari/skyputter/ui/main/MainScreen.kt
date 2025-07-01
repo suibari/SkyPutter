@@ -838,7 +838,9 @@ private fun AttachedVideoCard(
     if (embed == null) return
 
     Row(
-        modifier = modifier.padding(top = 8.dp),
+        modifier = modifier
+            .padding(top = 8.dp)
+            .fillMaxHeight(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -853,7 +855,6 @@ private fun AttachedVideoCard(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(120.dp)
         ) {
             Card(
                 modifier = Modifier.fillMaxSize()

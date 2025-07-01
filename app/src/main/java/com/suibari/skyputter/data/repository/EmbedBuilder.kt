@@ -2,7 +2,6 @@ package com.suibari.skyputter.data.repository
 
 import android.content.Context
 import android.util.Log
-import androidx.compose.ui.platform.LocalContext
 import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util.processVideoForUpload
@@ -12,10 +11,8 @@ import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.BlueskyFactory
 import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.api.entity.app.bsky.video.VideoGetJobStatusRequest
-import work.socialhub.kbsky.api.entity.app.bsky.video.VideoGetUploadLimitsRequest
 import work.socialhub.kbsky.api.entity.app.bsky.video.VideoUploadVideoRequest
 import work.socialhub.kbsky.api.entity.com.atproto.repo.RepoUploadBlobRequest
-import work.socialhub.kbsky.api.entity.com.atproto.server.ServerGetServiceAuthRequest
 import work.socialhub.kbsky.domain.Service.BSKY_SOCIAL
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternal
@@ -23,11 +20,10 @@ import work.socialhub.kbsky.model.app.bsky.embed.EmbedExternalExternal
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImages
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedImagesImage
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecord
+import work.socialhub.kbsky.model.app.bsky.embed.EmbedRecordWithMedia
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedUnion
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedVideo
 import work.socialhub.kbsky.model.share.Blob
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.time.ExperimentalTime
 
 // カスタム例外クラス群
@@ -50,31 +46,52 @@ object EmbedBuilder {
             try {
                 if (embeds.isNullOrEmpty()) return@withContext null
 
-                // urlStringがセット -> リンクカード
-                embeds.firstOrNull { it.type == BlueskyTypes.EmbedExternal }?.let {
-                    return@withContext createExternalEmbed(it)
-                }
+                val record = embeds.firstOrNull { it.type == BlueskyTypes.EmbedRecord }
+                val imageEmbeds = embeds.filter { it.type == BlueskyTypes.EmbedImages && it.blob != null }
+                val external = embeds.firstOrNull { it.type == BlueskyTypes.EmbedExternal }
+                val video = embeds.firstOrNull { it.type == BlueskyTypes.EmbedVideo && it.uri != null }
 
-                // 画像blobがセット -> 画像
-                embeds.firstOrNull { it.type == BlueskyTypes.EmbedImages }?.let {
-                    val imageEmbeds = embeds.filter { it.blob != null }
-                    if (imageEmbeds.isNotEmpty()) {
-                        return@withContext createImageEmbed(imageEmbeds)
+                // Record + Media
+                if (record != null) {
+                    val recordEmbed = createRecordEmbed(record)
+
+                    // 優先度: Video > Images > External
+                    val mediaEmbed: EmbedUnion? = when {
+                        video != null -> {
+                            video.blob = processVideoForUpload(context, video.uri!!)
+                            createVideoEmbed(video)
+                        }
+
+                        imageEmbeds.isNotEmpty() -> createImageEmbed(imageEmbeds)
+
+                        external != null -> createExternalEmbed(external)
+
+                        else -> null
+                    }
+
+                    return@withContext if (mediaEmbed != null) {
+                        EmbedRecordWithMedia().also {
+                            it.record = recordEmbed
+                            it.media = mediaEmbed
+                        }
+                    } else {
+                        EmbedRecord().also { it.record = recordEmbed.record }
                     }
                 }
 
-                // 引用
-                embeds.firstOrNull { it.type == BlueskyTypes.EmbedRecord }?.let {
-                    return@withContext createRecordEmbed(it)
-                }
+                // Media only
+                return@withContext when {
+                    video != null -> {
+                        video.blob = processVideoForUpload(context, video.uri!!)
+                        createVideoEmbed(video)
+                    }
 
-                // 動画
-                embeds.firstOrNull { it.type == BlueskyTypes.EmbedVideo && it.uriString != null }?.let {
-                    it.blob = processVideoForUpload(context, it.uri!!) // RepoでByteArrayに変換
-                    return@withContext createVideoEmbed(it)
-                }
+                    imageEmbeds.isNotEmpty() -> createImageEmbed(imageEmbeds)
 
-                return@withContext null
+                    external != null -> createExternalEmbed(external)
+
+                    else -> null
+                }
             } catch (e: EmbedException) {
                 Log.e("EmbedBuilder", "Embed creation failed", e)
                 throw e
