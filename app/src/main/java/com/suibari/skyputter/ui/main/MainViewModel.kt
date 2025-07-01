@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
@@ -217,15 +218,33 @@ open class MainViewModel(
     }
 
     fun addEmbed(newEmbed: AttachedEmbed) {
-        _embeds.add(newEmbed)
+        if (newEmbed.type == BlueskyTypes.EmbedImages) {
+            _embeds.add(newEmbed) // 画像は複数OK
+            return
+        }
+
+        // 他はtypeで置き換え
+        val existingIndex = _embeds.indexOfFirst { it.type == newEmbed.type }
+        if (existingIndex >= 0) {
+            _embeds[existingIndex] = newEmbed
+        } else {
+            _embeds.add(newEmbed)
+        }
     }
 
-    fun clearEmbed(embed: AttachedEmbed? = null) {
-        if (embed != null) {
-            _embeds.remove(embed)
-        } else {
-            _embeds.clear()
-        }
+    // 特定の種類のEmbedを取得するヘルパーメソッド
+    fun getEmbedByType(type: String): AttachedEmbed? {
+        return _embeds.find { it.type == type }
+    }
+
+    // 種類別のクリア機能
+    fun clearEmbedByType(type: String) {
+        _embeds.removeAll { it.type == type }
+    }
+
+    // 指定クリア機能
+    fun removeEmbed(embed: AttachedEmbed) {
+        _embeds.remove(embed)
     }
 
     fun clearError() {

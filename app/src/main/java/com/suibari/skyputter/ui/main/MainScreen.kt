@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Reply
@@ -37,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.lazy.items
 import androidx.core.content.ContextCompat
 import androidx.room.util.TableInfo
 import coil3.compose.AsyncImage
@@ -59,9 +63,6 @@ import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
-import java.time.Instant
-import java.time.ZoneId
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -191,11 +192,11 @@ fun MainScreen(
         if (uris.isNotEmpty()) {
             // コルーチンでバックグラウンド処理
             coroutineScope.launch {
-                withContext(Dispatchers.IO) {
-                    withContext(Dispatchers.Main) {
-                        viewModel.clearEmbed() // メインスレッドで実行
-                    }
+                withContext(Dispatchers.Main) {
+                    viewModel.clearEmbedByType(BlueskyTypes.EmbedImages) // メインスレッドで実行
+                }
 
+                withContext(Dispatchers.IO) {
                     uris.take(4).forEach { uri ->
                         try {
                             val contentType = context.contentResolver.getType(uri)
@@ -328,7 +329,13 @@ fun MainScreen(
                             viewModel.post(context, postText, embeds) {
                                 // 投稿成功時の処理（コルーチン内なのでOK）
                                 viewModel.postText = ""
-                                viewModel.clearEmbed()
+
+                                // 全Embed削除
+                                viewModel.clearEmbedByType(BlueskyTypes.EmbedExternal)
+                                viewModel.clearEmbedByType(BlueskyTypes.EmbedImages)
+                                viewModel.clearEmbedByType(BlueskyTypes.EmbedVideo)
+                                viewModel.clearEmbedByType(BlueskyTypes.EmbedRecord)
+
                                 viewModel.clearReplyContext()
                                 lastFetchedUrl = null
                                 viewModel.clearSuggestions()
@@ -371,7 +378,7 @@ fun MainScreen(
 
                     // URLが見つかるかつ初回のみ実行
                     if (lastFetchedUrl == null && foundUrl != null) {
-                        viewModel.clearEmbed()
+//                        viewModel.clearEmbedByType(BlueskyTypes.EmbedExternal)
                         viewModel.fetchOgImage(foundUrl)
                         lastFetchedUrl = foundUrl
                     }
@@ -532,6 +539,7 @@ private fun PostButton(
     }
 }
 
+// MainContentの修正部分
 @Composable
 private fun MainContent(
     modifier: Modifier = Modifier,
@@ -591,14 +599,30 @@ private fun MainContent(
             )
         }
 
-        // 添付画像表示
-        AttachedImageCard(
-            embeds = embeds,
+        // 各種類のEmbed表示
+        AttachedRecordCard(
+            embed = embeds?.find { it.type == BlueskyTypes.EmbedRecord },
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            onClear = { viewModel.clearEmbedByType(BlueskyTypes.EmbedRecord) }
+        )
+
+        AttachedImagesCard(
+            embeds = embeds?.filter { it.type == BlueskyTypes.EmbedImages },
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            onClear = { viewModel.removeEmbed(it) }
+        )
+
+        AttachedVideoCard(
+            embed = embeds?.find { it.type == BlueskyTypes.EmbedVideo },
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            onClear = { viewModel.clearEmbedByType(BlueskyTypes.EmbedVideo) }
+        )
+
+        AttachedExternalCard(
+            embed = embeds?.find { it.type == BlueskyTypes.EmbedExternal },
             isFetchingOgImage = viewModel.uiState.value.isFetchingOgImage,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            onClear = { viewModel.clearEmbed(it) }
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            onClear = { viewModel.clearEmbedByType(BlueskyTypes.EmbedExternal) }
         )
     }
 }
@@ -686,94 +710,84 @@ private fun ReplyContextCard(
             tint = MaterialTheme.colorScheme.primary
         )
 
-        Card(
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(8.dp)
+            Card(
+                modifier = Modifier.fillMaxSize()
             ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(parentAuthor?.avatar)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "avatar",
-                    modifier = Modifier.size(32.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(8.dp)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(parentAuthor?.avatar)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "avatar",
+                        modifier = Modifier.size(32.dp)
+                    )
 
-                Spacer(Modifier.spacePadding)
+                    Spacer(Modifier.spacePadding)
 
-                Text(
-                    text = parentPost?.text ?: "",
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-
-                IconButton(onClick = onClear) {
-                    Icon(Icons.Default.Close, contentDescription = "閉じる")
+                    Text(
+                        text = parentPost?.text ?: "",
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
                 }
+            }
+
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "閉じる",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .padding(2.dp)
+                )
             }
         }
     }
 }
 
-// AttachedImageCardの修正
+// 画像専用Composable
 @Composable
-private fun AttachedImageCard(
+private fun AttachedImagesCard(
     embeds: List<AttachedEmbed>?,
-    isFetchingOgImage: Boolean,
     modifier: Modifier,
     onClear: (AttachedEmbed) -> Unit
 ) {
-    // OG画像取得中の場合はローディングを表示
-    if (isFetchingOgImage && embeds.isNullOrEmpty()) {
-        Card(
-            modifier = modifier
-                .padding(top = 8.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(32.dp),
-                        strokeWidth = 3.dp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "リンクカード生成中...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-        return
-    }
-
-    // embedsが空の場合は何も表示しない
     if (embeds.isNullOrEmpty()) return
 
     Row(
-        modifier = modifier
-            .padding(top = 8.dp)
+        modifier = modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.Default.AttachFile,
-            contentDescription = "添付アイコン",
+            contentDescription = "画像アイコン",
             modifier = Modifier
                 .padding(end = 8.dp)
-                .align(Alignment.CenterVertically),
+                .size(24.dp),
             tint = MaterialTheme.colorScheme.primary
         )
 
+        // 最大4枚を横に等分表示
         embeds.take(4).forEach { embed ->
             Box(
                 modifier = Modifier
@@ -781,158 +795,18 @@ private fun AttachedImageCard(
                     .fillMaxHeight()
                     .padding(4.dp)
             ) {
-                Card(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    when {
-                        // imageUrlもtitleもある場合：左に画像、右にtitle/description
-                        embed.type == BlueskyTypes.EmbedExternal && embed.uri != null -> {
-                            Row(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                AsyncImage(
-                                    model = ImageRequest.Builder(LocalContext.current)
-                                        .data(embed.uri)
-                                        .crossfade(true)
-                                        .build(),
-                                    contentDescription = "OG Image",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(8.dp)
-                                        .fillMaxHeight(),
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = embed.title!!,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    embed.description?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        // imageUrlのみ（添付画像）：画像を全面に表示
-                        embed.type == BlueskyTypes.EmbedImages -> {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(embed.uri)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Attached Image",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                        // titleのみ（OG画像のないサイト）：titleを全面に表示
-                        embed.type == BlueskyTypes.EmbedExternal -> {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = embed.title!!,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 3,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                embed.description?.let {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = it,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 4,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                        // 引用
-                        embed.type == BlueskyTypes.EmbedRecord -> {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                embed.post?.let {
-                                    Text(
-                                        text = it.text ?: "",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 4,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                        // 動画: サムネイル表示 + 再生アイコン
-                        embed.type == BlueskyTypes.EmbedVideo -> {
-                            Box(
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                // サムネイル表示
-                                if (embed.thumbnailBitmap != null) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(LocalContext.current)
-                                            .data(embed.thumbnailBitmap)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Video Thumbnail",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    // サムネイルがない場合のフォールバック
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.VideoLibrary, // または適切な動画アイコン
-                                            contentDescription = "Video",
-                                            modifier = Modifier.size(48.dp),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                // 再生アイコンをオーバーレイ
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play Video",
-                                    modifier = Modifier
-                                        .align(Alignment.Center)
-                                        .size(48.dp)
-                                        .background(
-                                            Color.Black.copy(alpha = 0.6f),
-                                            shape = CircleShape
-                                        )
-                                        .padding(8.dp),
-                                    tint = Color.White
-                                )
-                            }
-                        }
-                    }
+                Card(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(embed.uri)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Attached Image",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
 
-                // 削除ボタン
                 IconButton(
                     onClick = { onClear(embed) },
                     modifier = Modifier
@@ -945,13 +819,342 @@ private fun AttachedImageCard(
                         contentDescription = "削除",
                         tint = Color.White,
                         modifier = Modifier
-                            .background(
-                                Color.Black.copy(alpha = 0.5f),
-                                shape = CircleShape
-                            )
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
                             .padding(2.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+// 動画専用Composable
+@Composable
+private fun AttachedVideoCard(
+    embed: AttachedEmbed?,
+    modifier: Modifier,
+    onClear: () -> Unit
+) {
+    if (embed == null) return
+
+    Row(
+        modifier = modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.AttachFile,
+            contentDescription = "動画アイコン",
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(120.dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // サムネイル表示
+                    if (embed.thumbnailBitmap != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(embed.thumbnailBitmap)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Video Thumbnail",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // サムネイルがない場合のフォールバック
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = "Video",
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // 再生アイコンをオーバーレイ
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Play Video",
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(48.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.6f),
+                                shape = CircleShape
+                            )
+                            .padding(8.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+
+            // 削除ボタン
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "削除",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .background(
+                            Color.Black.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        )
+                        .padding(2.dp)
+                )
+            }
+        }
+    }
+}
+
+// 外部リンク専用Composable
+@Composable
+private fun AttachedExternalCard(
+    embed: AttachedEmbed?,
+    isFetchingOgImage: Boolean,
+    modifier: Modifier,
+    onClear: () -> Unit
+) {
+    // OG画像取得中の場合はローディングを表示
+    if (isFetchingOgImage && embed == null) {
+        Card(
+            modifier = modifier
+                .padding(top = 8.dp)
+                .height(80.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "リンクカード生成中...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    if (embed == null) return
+
+    Row(
+        modifier = modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Link,
+            contentDescription = "リンクアイコン",
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(120.dp)
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    // 画像とタイトルがある場合
+                    embed.uri != null && embed.title != null -> {
+                        Row(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(embed.uri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "OG Image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(8.dp)
+                                    .fillMaxHeight(),
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = embed.title!!,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                embed.description?.let {
+                                    Text(
+                                        text = it,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    // タイトルのみの場合
+                    embed.title != null -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = embed.title!!,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            embed.description?.let {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 4,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 削除ボタン
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "削除",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .background(
+                            Color.Black.copy(alpha = 0.5f),
+                            shape = CircleShape
+                        )
+                        .padding(2.dp)
+                )
+            }
+        }
+    }
+}
+
+// 引用専用Composable
+@Composable
+private fun AttachedRecordCard(
+    embed: AttachedEmbed?,
+    modifier: Modifier,
+    onClear: () -> Unit
+) {
+    if (embed?.post == null) return
+
+    Row(
+        modifier = modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.FormatQuote,
+            contentDescription = "引用アイコン",
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(120.dp)
+                .padding(end = 4.dp) // 余白の統一感のため
+        ) {
+            Card(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Row(
+                    modifier = Modifier.padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+//                    AsyncImage(
+//                        model = ImageRequest.Builder(LocalContext.current)
+//                            .data(embed.post.author?.avatar)
+//                            .crossfade(true)
+//                            .build(),
+//                        contentDescription = "引用アバター",
+//                        modifier = Modifier.size(32.dp)
+//                    )
+
+                    Spacer(Modifier.spacePadding)
+
+                    Text(
+                        text = embed.post?.text ?: "",
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "削除",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .padding(2.dp)
+                )
             }
         }
     }
