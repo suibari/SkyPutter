@@ -17,8 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -324,6 +327,7 @@ fun MainScreen(
                                 viewModel.clearEmbed()
                                 viewModel.clearReplyContext()
                                 lastFetchedUrl = null
+                                viewModel.clearSuggestions()
                             }
                         }
                     }
@@ -605,44 +609,52 @@ fun SuggestionList(
 
     val suggestion = remember(suggestions) { suggestions.random() }
 
-    Card(
+    Row(
         modifier = modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 12.dp)
-        ) {
-            Text(
-                text = "サジェスト",
-                style = MaterialTheme.typography.labelMedium,
-            )
+        Icon(
+            imageVector = Icons.Default.Lightbulb,
+            contentDescription = "サジェストアイコン",
+            modifier = Modifier.padding(end = 8.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
 
-            Box(
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp) // 投稿日用のスペースを確保
+                    .padding(vertical = 8.dp, horizontal = 12.dp)
             ) {
-                TextButton(
-                    onClick = { onSuggestionClick(suggestion.text) },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 20.dp), // 投稿日と重ならないように
-                    shape = RectangleShape
+                        .padding(bottom = 8.dp)
                 ) {
+                    TextButton(
+                        onClick = { onSuggestionClick(suggestion.text) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 20.dp),
+                        shape = RectangleShape
+                    ) {
+                        Text(
+                            text = suggestion.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     Text(
-                        text = suggestion.text,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth()
+                        text = formatDeviceLocaleDate(suggestion.createdAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.align(Alignment.BottomEnd)
                     )
                 }
-
-                Text(
-                    text = formatDeviceLocaleDate(suggestion.createdAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                )
             }
         }
     }
@@ -655,33 +667,51 @@ private fun ReplyContextCard(
     modifier: Modifier,
     onClear: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = modifier
             .padding(top = 8.dp)
+            .fillMaxHeight(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage( // アイコン
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(parentAuthor?.avatar)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "avatar",
-                modifier = Modifier.size(32.dp)
-            )
+        Icon(
+            imageVector = Icons.Default.Reply,
+            contentDescription = "返信アイコン",
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(24.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
 
-            Spacer (Modifier.spacePadding)
+        Card(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(8.dp)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(parentAuthor?.avatar)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "avatar",
+                    modifier = Modifier.size(32.dp)
+                )
 
-            Text(
-                text = parentPost?.text ?: "",
-                maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+                Spacer(Modifier.spacePadding)
 
-            IconButton(onClick = onClear) {
-                Icon(Icons.Default.Close, contentDescription = "閉じる")
+                Text(
+                    text = parentPost?.text ?: "",
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Default.Close, contentDescription = "閉じる")
+                }
             }
         }
     }
@@ -731,6 +761,15 @@ private fun AttachedImageCard(
         modifier = modifier
             .padding(top = 8.dp)
     ) {
+        Icon(
+            imageVector = Icons.Default.AttachFile,
+            contentDescription = "添付アイコン",
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .align(Alignment.CenterVertically),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
         embeds.take(4).forEach { embed ->
             Box(
                 modifier = Modifier
