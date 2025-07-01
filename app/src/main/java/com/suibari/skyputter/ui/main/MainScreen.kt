@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -31,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.core.content.ContextCompat
+import androidx.room.util.TableInfo
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -42,6 +45,7 @@ import com.suibari.skyputter.ui.theme.spacePadding
 import com.suibari.skyputter.util.DraftViewModel
 import com.suibari.skyputter.util.SessionManager
 import com.suibari.skyputter.util.Util
+import com.suibari.skyputter.util.Util.formatDeviceLocaleDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
@@ -50,6 +54,9 @@ import work.socialhub.kbsky.BlueskyTypes
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
 import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileViewDetailed
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -536,7 +543,7 @@ private fun MainContent(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(4f)
+                .weight(2f)
         ) {
             TextField(
                 value = postText,
@@ -596,32 +603,46 @@ fun SuggestionList(
 ) {
     if (suggestions.isEmpty()) return
 
+    val suggestion = remember(suggestions) { suggestions.random() }
+
     Card(
-        modifier = modifier
-            .padding(top = 8.dp)
+        modifier = modifier.padding(top = 8.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(vertical = 8.dp, horizontal = 12.dp)
         ) {
             Text(
                 text = "サジェスト",
                 style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
-                overflow = TextOverflow.Ellipsis,
             )
 
-            suggestions.takeLast(1).forEach { item ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp) // 投稿日用のスペースを確保
+            ) {
                 TextButton(
-                    onClick = { onSuggestionClick(item.text) },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { onSuggestionClick(suggestion.text) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp), // 投稿日と重ならないように
+                    shape = RectangleShape
                 ) {
                     Text(
-                        text = item.text,
+                        text = suggestion.text,
                         style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+
+                Text(
+                    text = formatDeviceLocaleDate(suggestion.createdAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                )
             }
         }
     }

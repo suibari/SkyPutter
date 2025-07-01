@@ -15,10 +15,11 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest.Filter
+import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 object SuggestionBuilder {
-    suspend fun fetchOwnPosts(userDid: String, limit: Int = 1000): List<String> = withContext(Dispatchers.IO) {
-        val posts = mutableListOf<String>()
+    suspend fun fetchOwnPosts(userDid: String, limit: Int = 1000): List<FeedPost> = withContext(Dispatchers.IO) {
+        val posts = mutableListOf<FeedPost>()
         var cursor: String? = null
 
         while (true) {
@@ -38,7 +39,7 @@ object SuggestionBuilder {
 
             val items = response.data.feed
                 .filter { it.reason == null }
-                .mapNotNull { it.post.record?.asFeedPost?.text }
+                .mapNotNull { it.post.record?.asFeedPost }
 
             posts.addAll(items)
             Log.i("SuggestionRepo", "fetched ${items.size} posts (total=${posts.size})")
@@ -57,8 +58,14 @@ object SuggestionBuilder {
     /**
      * 過去ポストをまとめて形態素解析サーバに投げ、結果をDBに格納するための関数
      */
-    suspend fun sendToMorphServerAll(texts: List<String>): List<SuggestionEntity> = withContext(Dispatchers.IO) {
+    suspend fun sendToMorphServerAll(
+        posts: List<FeedPost>,
+    ): List<SuggestionEntity> = withContext(Dispatchers.IO) {
         try {
+            // 投稿本文を抽出（null除外）
+            val texts = posts.mapNotNull { it.text }
+
+            // JSONで送信
             val json = Json.encodeToString(mapOf("texts" to texts))
             val conn = URL("https://negaposi-api.onrender.com/analyze").openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -70,10 +77,24 @@ object SuggestionBuilder {
             val response = conn.inputStream.bufferedReader().readText()
             val jsonObject = Json.parseToJsonElement(response).jsonObject
             val wakatiList = jsonObject["wakati"]?.jsonArray ?: return@withContext emptyList()
+            val sentimentList = jsonObject["average_sentiments"]?.jsonArray ?: return@withContext emptyList()
 
-            return@withContext wakatiList.mapIndexed { i, arr ->
+            // DB保存
+            return@withContext wakatiList.mapIndexedNotNull { i, arr ->
+                // 元のポストとsentimentが揃っていない場合に備えてnull安全に処理
+                val post = posts.getOrNull(i) ?: return@mapIndexedNotNull null
+                val sentiment = sentimentList.getOrNull(i) ?: return@mapIndexedNotNull null
                 val tokens = arr.jsonArray.map { it.jsonPrimitive.content }
-                SuggestionEntity(text = texts[i], tokens = tokens.toString())
+
+                val tokensString = tokens.joinToString(" ") // FTS用に空白区切りで保存
+                Log.i("SuggestionBuilder", "text: ${post.text}, tokens: $tokensString, sentiment: $sentiment, createdAt: ${post.createdAt}")
+
+                SuggestionEntity(
+                    text = post.text ?: "",
+                    tokens = tokensString,
+                    sentiment = sentiment.toString(),
+                    createdAt = post.createdAt.toString()
+                )
             }
         } catch (e: Exception) {
             Log.e("SuggestionBuilder", "sendToMorphServerAll failed", e)

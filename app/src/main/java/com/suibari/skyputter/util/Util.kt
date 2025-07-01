@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 import work.socialhub.kbsky.model.app.bsky.embed.EmbedDefsAspectRatio
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.time.Instant
+import java.time.ZoneId
+import java.util.Locale
 
 object Util {
     suspend fun getImageFromUri(
@@ -130,5 +133,23 @@ object Util {
             }
         }
         return null
+    }
+
+    fun formatDeviceLocaleDate(isoString: String): String {
+        return try {
+            val instant = Instant.parse(isoString)
+            val local = instant.atZone(ZoneId.systemDefault())
+            String.format(
+                Locale.getDefault(),
+                "%d年%d月%d日%d時%d分",
+                local.year,
+                local.monthValue,
+                local.dayOfMonth,
+                local.hour,
+                local.minute
+            )
+        } catch (e: Exception) {
+            isoString // パース失敗時は元の文字列を返す
+        }
     }
 }

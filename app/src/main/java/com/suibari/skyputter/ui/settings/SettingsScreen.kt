@@ -1,5 +1,6 @@
 package com.suibari.skyputter.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -10,7 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.suibari.skyputter.data.db.SuggestionDatabase
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.data.settings.SuggestionSettings
 import com.suibari.skyputter.ui.main.MainViewModel
@@ -44,12 +47,23 @@ fun SettingsScreen(
 
     // 過去ポスト収集ローディングサークル
     val progress by viewModel.suggestionProgress.collectAsState()
+    val isBlocking = (progress != Idle)
+
+
+    if (isBlocking) {
+        BackHandler {
+            // NOP
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("設定") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = { if (!isBlocking) onBack() },
+                        enabled = !isBlocking
+                    ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "戻る")
                     }
                 }
@@ -100,6 +114,8 @@ fun SettingsScreen(
                             showSuggestionDialog = true
                         } else {
                             coroutineScope.launch {
+                                // DB削除
+                                SuggestionDatabase.getInstance(context).suggestionDao().clearAll()
                                 SuggestionSettings.setSuggestionEnabled(context, false)
                             }
                         }
@@ -156,14 +172,16 @@ fun SettingsScreen(
     }
 
     // ローディング中のオーバーレイ
-    if (progress != Idle) {
+    if (isBlocking) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)),
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+                .zIndex(1f),
             contentAlignment = Alignment.Center
         ) {
             Column(
+                modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CircularProgressIndicator()
@@ -175,7 +193,8 @@ fun SettingsScreen(
                         SavingSuggestions -> "デバイスに保存中..."
                         else -> ""
                     },
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
             }
         }
