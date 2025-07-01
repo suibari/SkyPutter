@@ -57,7 +57,8 @@ fun UserPostListScreen(
                         postToDelete = feed
                     }
                     false // 自動で消えないようにする
-                }
+                },
+                positionalThreshold = { it * 0.5f }, // 感度を減らす
             )
 
             SwipeToDismissBox(
