@@ -23,7 +23,7 @@ class UserPostRepository: BskyPostActionRepository() {
                         FeedGetAuthorFeedRequest(auth).also {
                             it.actor = did!!
                             it.limit = limit
-                            it.filter = FeedGetAuthorFeedRequest.Filter.PostsAndAuthorThreads
+                            it.filter = FeedGetAuthorFeedRequest.Filter.PostsWithReplies
                             it.cursor = cursor
                         }
                     )

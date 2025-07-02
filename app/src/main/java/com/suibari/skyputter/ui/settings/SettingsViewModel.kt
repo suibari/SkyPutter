@@ -37,7 +37,7 @@ class SettingsViewModel(
             Log.i("SettingsViewModel", "posts: ${posts.size}")
 
             _suggestionProgress.value = SuggestionProgressState.AnalyzingPosts
-            val suggestions = SuggestionBuilder.sendToMorphServerAll(posts)
+            val suggestions = SuggestionBuilder.getEntitiesFromMorphServer(posts)
             Log.i("SettingsViewModel", "suggestions: ${suggestions.size}")
 
             _suggestionProgress.value = SuggestionProgressState.SavingSuggestions

@@ -164,6 +164,14 @@ open class MainViewModel(
 
             when (val result = repo.postText(context, postText, embeds, replyRef)) {
                 is PostResult.Success -> {
+                    try {
+                        val suggestion = SuggestionBuilder.getEntityFromMorphServer(postText)
+                        SuggestionDatabase.getInstance(context).suggestionDao().insertAll(suggestion)
+                    } catch (e: Exception) {
+                        Log.e("MainViewModel", "形態素解析またはDB保存に失敗", e)
+                        // 必須でないのでそのまま継続
+                    }
+
                     _uiState.value = _uiState.value.copy(isPosting = false)
                     onSuccess()
                 }
@@ -335,7 +343,7 @@ open class MainViewModel(
             try {
                 // 形態素解析でトークンを取得
                 val tokens = withContext(Dispatchers.IO) {
-                    SuggestionBuilder.sendToMorphServerSingle(input)
+                    SuggestionBuilder.getNounsFromMorphServer(input)
                 }
 
                 if (tokens.isEmpty()) {

@@ -48,6 +48,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.suibari.skyputter.SkyPutterApp
 import com.suibari.skyputter.data.db.SuggestionEntity
+import com.suibari.skyputter.data.repository.SuggestionBuilder
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.ui.notification.NotificationViewModel
 import com.suibari.skyputter.ui.theme.spacePadding
@@ -336,7 +337,10 @@ fun MainScreen(
                                 viewModel.clearEmbedByType(BlueskyTypes.EmbedVideo)
                                 viewModel.clearEmbedByType(BlueskyTypes.EmbedRecord)
 
+                                // 返信欄削除
                                 viewModel.clearReplyContext()
+
+                                // リンクカード削除
                                 lastFetchedUrl = null
                                 viewModel.clearSuggestions()
                             }

@@ -15,6 +15,8 @@ import work.socialhub.kbsky.api.entity.app.bsky.feed.FeedGetAuthorFeedRequest.Fi
 import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
 
 object SuggestionBuilder {
+    val NEGAPOSI_API = URL("https://negaposi-api.onrender.com/analyze")
+
     suspend fun fetchOwnPosts(userDid: String, limit: Int = 1000): List<FeedPost> = withContext(Dispatchers.IO) {
         val posts = mutableListOf<FeedPost>()
         var cursor: String? = null
@@ -53,9 +55,9 @@ object SuggestionBuilder {
     }
 
     /**
-     * 過去ポストをまとめて形態素解析サーバに投げ、結果をDBに格納するための関数
+     * 文章配列から形態素解析サーバに保存するためのList<Entity>を得る
      */
-    suspend fun sendToMorphServerAll(
+    suspend fun getEntitiesFromMorphServer(
         posts: List<FeedPost>,
     ): List<SuggestionEntity> = withContext(Dispatchers.IO) {
         try {
@@ -64,7 +66,7 @@ object SuggestionBuilder {
 
             // JSONで送信
             val json = Json.encodeToString(mapOf("texts" to texts))
-            val conn = URL("https://negaposi-api.onrender.com/analyze").openConnection() as HttpURLConnection
+            val conn = NEGAPOSI_API.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
             conn.doOutput = true
@@ -106,12 +108,64 @@ object SuggestionBuilder {
     }
 
     /**
-     * 入力テキストを形態素解析してクエリ化するための関数
+     * 文章から形態素解析サーバに保存するためのEntityを得る
      */
-    suspend fun sendToMorphServerSingle(text: String): List<String> = withContext(Dispatchers.IO) {
+    suspend fun getEntityFromMorphServer(
+        text: String,
+    ): List<SuggestionEntity> = withContext(Dispatchers.IO) {
         try {
+            if (text.isBlank()) return@withContext emptyList()
+
+            // JSON形式で送信
             val json = Json.encodeToString(mapOf("texts" to listOf(text)))
             val conn = URL("https://negaposi-api.onrender.com/analyze").openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+
+            conn.outputStream.use { it.write(json.toByteArray()) }
+
+            val response = conn.inputStream.bufferedReader().readText()
+            val jsonObject = Json.parseToJsonElement(response).jsonObject
+
+            // "nouns" は List<List<String>>、"average_sentiments" は List<Float>
+            val nounsList = jsonObject["nouns"]?.jsonArray ?: return@withContext emptyList()
+            val sentimentList = jsonObject["average_sentiments"]?.jsonArray ?: return@withContext emptyList()
+
+            val createdAt = java.time.Instant.now()
+
+            return@withContext nounsList.mapIndexedNotNull { i, element ->
+                val sentiment = sentimentList.getOrNull(i)?.jsonPrimitive?.floatOrNull
+                    ?: return@mapIndexedNotNull null
+
+                val tokens = element.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }
+                val tokensString = tokens.joinToString(" ")
+
+                Log.i(
+                    "SuggestionBuilder",
+                    "text: $text, tokens: $tokensString, sentiment: $sentiment, createdAt: $createdAt"
+                )
+
+                SuggestionEntity(
+                    text = text,
+                    tokens = tokensString,
+                    sentiment = sentiment.toString(),
+                    createdAt = createdAt.toString()
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("SuggestionBuilder", "getEntityFromMorphServer failed", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * 文章から名詞の配列を得る
+     */
+    suspend fun getNounsFromMorphServer(text: String): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val json = Json.encodeToString(mapOf("texts" to listOf(text)))
+            val conn = NEGAPOSI_API.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
             conn.doOutput = true
