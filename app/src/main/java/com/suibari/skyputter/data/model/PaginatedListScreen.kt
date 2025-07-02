@@ -61,7 +61,8 @@ fun <T : HasUri> PaginatedListScreen(
         item: T,
         onReply: (RepoStrongRef, RepoStrongRef, FeedPost, ActorDefsProfileView) -> Unit,
         onQuote: (RepoStrongRef) -> Unit
-    ) -> Unit
+    ) -> Unit,
+    topBarActions: @Composable (() -> Unit)? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -145,6 +146,9 @@ fun <T : HasUri> PaginatedListScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "戻る")
                     }
+                },
+                actions = {
+                    topBarActions?.invoke()
                 }
             )
         }

@@ -26,6 +26,8 @@ import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.ui.notification.NotificationListScreen
 import com.suibari.skyputter.ui.post.UserPostListScreen
 import com.suibari.skyputter.ui.post.UserPostViewModel
+import com.suibari.skyputter.ui.sentiment.SentimentCalendarScreen
+import com.suibari.skyputter.ui.sentiment.SentimentCalendarViewModel
 import com.suibari.skyputter.ui.settings.SettingsScreen
 import com.suibari.skyputter.ui.settings.SettingsViewModel
 import com.suibari.skyputter.ui.theme.SkyPutterTheme
@@ -293,10 +295,27 @@ class MainActivity : ComponentActivity() {
                             navController.navigate("main") {
                                 popUpTo("main") { inclusive = true } // 既存のMainを削除してから遷移
                             }
+                        },
+                        onOpenCalendar = {
+                            navController.navigate("calendar")
                         }
                     )
                 } else {
                     LoadingScreen()
+                }
+            }
+
+            composable(Screen.Calendar.route) {
+                when (initState) {
+                    is ViewModelContainer.InitializationState.Completed -> {
+                        SentimentCalendarScreen(
+                            viewModel = viewModelContainer.calendarViewModel!!,
+                            onBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    else -> LoadingScreen()
                 }
             }
 
@@ -405,6 +424,8 @@ class ViewModelContainer(
         private set
     var userPostViewModel: UserPostViewModel? by mutableStateOf(null)
         private set
+    var calendarViewModel: SentimentCalendarViewModel? by mutableStateOf(null)
+        private set
     var draftViewModel: DraftViewModel? by mutableStateOf(null)
         private set
     var settingsViewModel: SettingsViewModel? by mutableStateOf(null)
@@ -459,6 +480,7 @@ class ViewModelContainer(
                     )
 
                     userPostViewModel = UserPostViewModel(userPostRepo)
+                    calendarViewModel = SentimentCalendarViewModel(application)
                     draftViewModel = DraftViewModel(context)
                     settingsViewModel = SettingsViewModel(context)
 

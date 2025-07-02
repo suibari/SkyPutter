@@ -3,10 +3,12 @@ package com.suibari.skyputter.ui.post
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue.*
 import androidx.compose.material3.Text
@@ -18,14 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.*
 import com.suibari.skyputter.data.model.PaginatedListScreen
-import com.suibari.skyputter.ui.main.AttachedEmbed
 import com.suibari.skyputter.ui.main.MainViewModel
 import com.suibari.skyputter.ui.type.DisplayFeed
 import kotlinx.coroutines.launch
-import work.socialhub.kbsky.BlueskyTypes
-import work.socialhub.kbsky.model.app.bsky.actor.ActorDefsProfileView
-import work.socialhub.kbsky.model.app.bsky.feed.FeedPost
-import work.socialhub.kbsky.model.com.atproto.repo.RepoStrongRef
 import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,6 +32,7 @@ fun UserPostListScreen(
     mainViewModel: MainViewModel,
     myDid: String,
     onBack: () -> Unit,
+    onOpenCalendar: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var postToDelete by remember { mutableStateOf<DisplayFeed?>(null) }
@@ -105,6 +103,16 @@ fun UserPostListScreen(
                     onLike = { ref -> coroutineScope.launch { viewModel.toggleLike(ref) } },
                     onRepost = { ref -> coroutineScope.launch { viewModel.toggleRepost(ref) } },
                     onQuote = { onQuote(it) },
+                )
+            }
+        },
+        topBarActions = {
+            IconButton(
+                onClick = onOpenCalendar
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = "きぶんカレンダー"
                 )
             }
         }

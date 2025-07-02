@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.suibari.skyputter.data.db.SuggestionDatabase
 import com.suibari.skyputter.data.settings.NotificationSettings
 import com.suibari.skyputter.data.settings.SuggestionSettings

@@ -16,4 +16,18 @@ interface SuggestionDao {
 
     @Query("DELETE FROM suggestion_entries")
     suspend fun clearAll()
+
+    @Query("""
+        SELECT 
+            substr(createdAt, 1, 10) AS date,
+            AVG(CAST(sentiment AS REAL)) AS average_sentiment
+        FROM suggestion_entries
+        GROUP BY date
+    """)
+    suspend fun getAverageSentimentPerDay(): List<SentimentPerDay>
 }
+
+data class SentimentPerDay(
+    val date: String, // 例: "2025-07-02"
+    val average_sentiment: Float
+)

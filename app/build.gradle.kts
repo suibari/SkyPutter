@@ -111,6 +111,10 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
+    // カレンダー機能
+    implementation("com.kizitonwose.calendar:view:2.7.0")
+    implementation("com.kizitonwose.calendar:compose:2.7.0")
+
     // === 1分間隔通知のための追加依存関係 ===
     // フォアグラウンドサービス用
     implementation("androidx.lifecycle:lifecycle-service:2.7.0")
